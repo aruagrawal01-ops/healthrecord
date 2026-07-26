@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Patient Dashboard{% endblock %}
+{% block content %}
+<h3 class="mb-4">Welcome, {{ current_name }}</h3>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card stat-card border-primary">
+            <div class="card-body">
+                <div class="text-muted small">Upcoming Appointments</div>
+                <div class="fs-2 fw-bold">{{ upcoming|length }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card border-success">
+            <div class="card-body">
+                <div class="text-muted small">Recent Records</div>
+                <div class="fs-2 fw-bold">{{ recent_records|length }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card border-warning">
+            <div class="card-body">
+                <div class="text-muted small">Pending Lab Tests</div>
+                <div class="fs-2 fw-bold">{{ pending_tests }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-calendar-check"></i> Upcoming Appointments</span>
+                <a href="{{ url_for('patient.appointments') }}" class="small">Book new &rarr;</a>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for a in upcoming %}
+                <div class="list-group-item">
+                    <div class="fw-semibold">Dr. {{ a.doctor_name }}</div>
+                    <div class="small text-muted">{{ a.appointment_date }} at {{ a.appointment_time }} &mdash; {{ a.reason }}</div>
+                </div>
+                {% else %}
+                <div class="list-group-item text-muted">No upcoming appointments.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-file-earmark-medical"></i> Recent Medical Records</div>
+            <div class="list-group list-group-flush">
+                {% for r in recent_records %}
+                <div class="list-group-item">
+                    <div class="fw-semibold">{{ r.diagnosis }}</div>
+                    <div class="small text-muted">Dr. {{ r.doctor_name }} &mdash; {{ r.created_at.strftime('%d %b %Y') }}</div>
+                </div>
+                {% else %}
+                <div class="list-group-item text-muted">No records yet.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Forbidden{% endblock %}
+{% block content %}
+<div class="text-center py-5">
+    <i class="bi bi-shield-lock display-1 text-muted"></i>
+    <h2 class="mt-3">403 - Access Denied</h2>
+    <a href="{{ url_for('auth.index') }}" class="btn btn-primary mt-3">Go Home</a>
+</div>
+{% endblock %}

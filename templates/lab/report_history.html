@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Upload History{% endblock %}
+{% block content %}
+<h3 class="mb-4"><i class="bi bi-clock-history"></i> My Upload History</h3>
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead><tr><th>Patient</th><th>Test</th><th>Result</th><th>Uploaded</th><th></th></tr></thead>
+            <tbody>
+                {% for r in reports %}
+                <tr>
+                    <td>{{ r.patient_name }}</td>
+                    <td>{{ r.test_name }}</td>
+                    <td>{{ r.result_summary }}</td>
+                    <td>{{ r.uploaded_at.strftime('%d %b %Y %H:%M') }}</td>
+                    <td>
+                        {% if r.file_name %}
+                        <a href="{{ url_for('lab.download_report', report_id=r.report_id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-download"></i></a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="text-muted text-center py-3">No uploads yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

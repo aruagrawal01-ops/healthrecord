@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Pending Tests{% endblock %}
+{% block content %}
+<h3 class="mb-4"><i class="bi bi-hourglass-split"></i> Pending Lab Tests</h3>
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead><tr><th>Patient</th><th>Test</th><th>Requested By</th><th>Requested On</th><th></th></tr></thead>
+            <tbody>
+                {% for t in tests %}
+                <tr>
+                    <td>{{ t.patient_name }}</td>
+                    <td>{{ t.test_name }}</td>
+                    <td>Dr. {{ t.requested_by }}</td>
+                    <td>{{ t.requested_at.strftime('%d %b %Y %H:%M') }}</td>
+                    <td><a href="{{ url_for('lab.upload_report', lab_test_id=t.lab_test_id) }}" class="btn btn-sm btn-primary"><i class="bi bi-upload"></i> Upload Result</a></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="text-muted text-center py-3">No pending tests. All caught up!</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

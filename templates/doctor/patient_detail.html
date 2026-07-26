@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ person.full_name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+    <div>
+        <h3>{{ person.full_name }}</h3>
+        <div class="text-muted small">
+            {{ person.gender }} &bull; DOB {{ person.dob }} &bull; Blood Group {{ person.blood_group or '—' }} &bull; {{ person.phone or 'No phone' }}
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('doctor.add_record', patient_id=person.patient_id) }}" class="btn btn-primary btn-sm"><i class="bi bi-file-earmark-plus"></i> Add Diagnosis</a>
+        <a href="{{ url_for('doctor.request_lab_test', patient_id=person.patient_id) }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-flask"></i> Request Lab Test</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-7">
+        <div class="card mb-4">
+            <div class="card-header">Medical Records</div>
+            <div class="list-group list-group-flush">
+                {% for r in records %}
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between">
+                        <strong>{{ r.diagnosis }}</strong>
+                        <span class="small text-muted">{{ r.created_at.strftime('%d %b %Y') }}</span>
+                    </div>
+                    {% if r.prescription %}<div class="small">Rx: {{ r.prescription }}</div>{% endif %}
+                    {% if r.notes %}<div class="small text-muted">{{ r.notes }}</div>{% endif %}
+                </div>
+                {% else %}
+                <div class="list-group-item text-muted">No records yet.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Lab Tests</div>
+            <div class="table-responsive">
+                <table class="table mb-0 align-middle">
+                    <thead><tr><th>Test</th><th>Status</th><th>Result</th></tr></thead>
+                    <tbody>
+                        {% for t in lab_tests %}
+                        <tr>
+                            <td>{{ t.test_name }}</td>
+                            <td><span class="badge status-{{ t.status|lower }}">{{ t.status }}</span></td>
+                            <td>{{ t.result_summary or '—' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="3" class="text-muted text-center py-3">No lab tests.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header">Appointment History</div>
+            <div class="list-group list-group-flush">
+                {% for a in appointments %}
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between">
+                        <span>{{ a.appointment_date }} {{ a.appointment_time }}</span>
+                        <span class="badge status-{{ a.status|lower }}">{{ a.status }}</span>
+                    </div>
+                    <div class="small text-muted">{{ a.reason }}</div>
+                </div>
+                {% else %}
+                <div class="list-group-item text-muted">No appointments.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

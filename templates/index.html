@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Welcome{% endblock %}
+{% block content %}
+<div class="hero text-center py-5 mb-4">
+    <i class="bi bi-heart-pulse-fill display-3 text-danger"></i>
+    <h1 class="fw-bold mt-3">MediRecord</h1>
+    <p class="lead text-muted">Patient Health Record Management System</p>
+    <div class="mt-4">
+        <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg me-2"><i class="bi bi-box-arrow-in-right"></i> Login</a>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary btn-lg">Register as Patient</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-3">
+        <div class="card h-100 text-center feature-card">
+            <div class="card-body">
+                <i class="bi bi-person-fill display-5 text-primary"></i>
+                <h5 class="card-title mt-3">Patient</h5>
+                <p class="card-text text-muted small">Book appointments, view prescriptions and lab reports.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 text-center feature-card">
+            <div class="card-body">
+                <i class="bi bi-clipboard2-pulse-fill display-5 text-success"></i>
+                <h5 class="card-title mt-3">Doctor</h5>
+                <p class="card-text text-muted small">Manage appointments, diagnoses, prescriptions and lab requests.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 text-center feature-card">
+            <div class="card-body">
+                <i class="bi bi-flask-fill display-5 text-warning"></i>
+                <h5 class="card-title mt-3">Lab Assistant</h5>
+                <p class="card-text text-muted small">Process pending test requests and upload results.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 text-center feature-card">
+            <div class="card-body">
+                <i class="bi bi-shield-lock-fill display-5 text-secondary"></i>
+                <h5 class="card-title mt-3">Admin</h5>
+                <p class="card-text text-muted small">Manage doctors, lab staff, departments and hospital-wide records.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

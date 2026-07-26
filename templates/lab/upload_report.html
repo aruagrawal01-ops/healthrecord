@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Upload Report{% endblock %}
+{% block content %}
+<h3 class="mb-4"><i class="bi bi-upload"></i> Upload Result &mdash; {{ test.test_name }}</h3>
+<p class="text-muted">Patient: <strong>{{ test.patient_name }}</strong></p>
+<div class="card">
+    <div class="card-body">
+        <form method="POST" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label class="form-label">Result Summary</label>
+                <textarea class="form-control" name="result_summary" rows="4" required placeholder="e.g. Total Cholesterol: 190 mg/dL, LDL: 110 mg/dL, HDL: 55 mg/dL — within normal range"></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Attach Report File (PDF/PNG/JPG, optional, max 5MB)</label>
+                <input type="file" class="form-control" name="report_file" accept=".pdf,.png,.jpg,.jpeg">
+            </div>
+            <button type="submit" class="btn btn-primary">Submit Report</button>
+            <a href="{{ url_for('lab.pending_tests') }}" class="btn btn-outline-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

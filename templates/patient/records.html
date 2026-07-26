@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Medical Records{% endblock %}
+{% block content %}
+<h3 class="mb-4"><i class="bi bi-file-earmark-medical"></i> Medical Records</h3>
+
+{% for r in records %}
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="d-flex justify-content-between">
+            <h5 class="card-title">{{ r.diagnosis }}</h5>
+            <span class="text-muted small">{{ r.created_at.strftime('%d %b %Y') }}</span>
+        </div>
+        <div class="small text-muted mb-2">Dr. {{ r.doctor_name }} &mdash; {{ r.specialization or '' }}</div>
+        {% if r.prescription %}
+        <p class="mb-1"><strong>Prescription:</strong> {{ r.prescription }}</p>
+        {% endif %}
+        {% if r.notes %}
+        <p class="mb-0 text-muted"><strong>Notes:</strong> {{ r.notes }}</p>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<div class="text-center text-muted py-5">No medical records yet.</div>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Lab Dashboard{% endblock %}
+{% block content %}
+<h3 class="mb-4">Welcome, {{ current_name }}</h3>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card stat-card border-warning">
+            <div class="card-body">
+                <div class="text-muted small">Pending Tests (all)</div>
+                <div class="fs-2 fw-bold">{{ pending_count }}</div>
+                <a href="{{ url_for('lab.pending_tests') }}" class="small">View queue &rarr;</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><i class="bi bi-upload"></i> My Recent Uploads</div>
+    <div class="list-group list-group-flush">
+        {% for r in recent_uploads %}
+        <div class="list-group-item">
+            <div class="fw-semibold">{{ r.test_name }} &mdash; {{ r.patient_name }}</div>
+            <div class="small text-muted">{{ r.uploaded_at.strftime('%d %b %Y %H:%M') }}</div>
+        </div>
+        {% else %}
+        <div class="list-group-item text-muted">No uploads yet.</div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Appointments{% endblock %}
+{% block content %}
+<h3 class="mb-4"><i class="bi bi-calendar-check"></i> Appointments</h3>
+
+<div class="row g-4">
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header">Book New Appointment</div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Doctor</label>
+                        <select class="form-select" name="doctor_id" required>
+                            <option value="" disabled selected>Select a doctor</option>
+                            {% for d in doctors %}
+                            <option value="{{ d.doctor_id }}">Dr. {{ d.full_name }} &mdash; {{ d.specialization or 'General' }} ({{ d.department or 'N/A' }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Date</label>
+                        <input type="date" class="form-control" name="appointment_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Time</label>
+                        <input type="time" class="form-control" name="appointment_time" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Reason for visit</label>
+                        <textarea class="form-control" name="reason" rows="2"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-circle"></i> Book Appointment</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header">My Appointments</div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead><tr><th>Doctor</th><th>Date</th><th>Time</th><th>Status</th><th></th></tr></thead>
+                    <tbody>
+                        {% for a in appointments %}
+                        <tr>
+                            <td>Dr. {{ a.doctor_name }}<div class="small text-muted">{{ a.specialization or '' }}</div></td>
+                            <td>{{ a.appointment_date }}</td>
+                            <td>{{ a.appointment_time }}</td>
+                            <td><span class="badge status-{{ a.status|lower }}">{{ a.status }}</span></td>
+                            <td>
+                                {% if a.status == 'Scheduled' %}
+                                <form method="POST" action="{{ url_for('patient.cancel_appointment', appointment_id=a.appointment_id) }}" onsubmit="return confirm('Cancel this appointment?');">
+                                    <button class="btn btn-sm btn-outline-danger">Cancel</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" class="text-muted text-center py-3">No appointments yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

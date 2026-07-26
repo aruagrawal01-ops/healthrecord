@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}My Profile{% endblock %}
+{% block content %}
+<h3 class="mb-4"><i class="bi bi-person-circle"></i> My Profile</h3>
+<div class="row">
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6"><strong>Name:</strong> {{ person.full_name }}</div>
+                    <div class="col-md-6"><strong>Date of Birth:</strong> {{ person.dob }}</div>
+                    <div class="col-md-6"><strong>Gender:</strong> {{ person.gender }}</div>
+                </div>
+                <hr>
+                <form method="POST">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Blood Group</label>
+                            <input type="text" class="form-control" name="blood_group" value="{{ person.blood_group or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Phone</label>
+                            <input type="tel" class="form-control" name="phone" value="{{ person.phone or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Emergency Contact</label>
+                            <input type="tel" class="form-control" name="emergency_contact" value="{{ person.emergency_contact or '' }}">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Address</label>
+                            <textarea class="form-control" name="address" rows="2">{{ person.address or '' }}</textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary mt-3"><i class="bi bi-save"></i> Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

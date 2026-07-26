@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Lab Reports{% endblock %}
+{% block content %}
+<h3 class="mb-4"><i class="bi bi-flask"></i> Lab Reports</h3>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead><tr><th>Test</th><th>Requested By</th><th>Status</th><th>Result</th><th></th></tr></thead>
+            <tbody>
+                {% for t in tests %}
+                <tr>
+                    <td>{{ t.test_name }}</td>
+                    <td>Dr. {{ t.requested_by }}</td>
+                    <td><span class="badge status-{{ t.status|lower }}">{{ t.status }}</span></td>
+                    <td>{{ t.result_summary or '—' }}</td>
+                    <td>
+                        {% if t.report_id and t.file_name %}
+                        <a href="{{ url_for('patient.download_report', report_id=t.report_id) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-download"></i> {{ t.file_name }}
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="text-muted text-center py-3">No lab tests on record.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

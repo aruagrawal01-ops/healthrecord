@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Departments{% endblock %}
+{% block content %}
+<h3 class="mb-4"><i class="bi bi-building"></i> Departments</h3>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">Add Department</div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Add</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table mb-0 align-middle">
+                    <thead><tr><th>Department</th><th>Doctors</th></tr></thead>
+                    <tbody>
+                        {% for d in departments %}
+                        <tr><td>{{ d.name }}</td><td>{{ d.doctor_count }}</td></tr>
+                        {% else %}
+                        <tr><td colspan="2" class="text-muted text-center py-3">No departments yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
