@@ -1,3 +1,5 @@
+import traceback
+
 from flask import Flask, render_template, session
 
 import db
@@ -24,6 +26,15 @@ def create_app():
     @app.context_processor
     def inject_session():
         return {"current_role": session.get("role"), "current_name": session.get("full_name")}
+
+    @app.route("/_debug_db")
+    def _debug_db():
+        # TEMPORARY diagnostic route -- remove once the deployment is confirmed healthy.
+        try:
+            row = db.query_one("SELECT COUNT(*) AS n FROM users")
+            return {"ok": True, "user_count": row["n"]}
+        except Exception as e:
+            return {"ok": False, "error": repr(e), "trace": traceback.format_exc()}, 500
 
     @app.errorhandler(404)
     def not_found(e):
