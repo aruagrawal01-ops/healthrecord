@@ -1,4 +1,3 @@
-import psycopg2
 from flask import Blueprint, Response, abort, current_app, flash, redirect, render_template, request, session, url_for
 from werkzeug.utils import secure_filename
 
@@ -86,7 +85,7 @@ def upload_report(lab_test_id):
                 result_summary,
                 file_name,
                 file_type,
-                psycopg2.Binary(file_bytes) if file_bytes else None,
+                file_bytes,
             ),
         )
         flash("Lab report uploaded successfully.", "success")
