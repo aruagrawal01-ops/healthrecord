@@ -1,7 +1,7 @@
 from flask import Blueprint, Response, flash, redirect, render_template, request, session, url_for
 
 from auth import role_required
-from db import execute, query_all, query_one
+from db import DatabaseError, error_message, execute, query_all, query_one
 
 patient_bp = Blueprint("patient", __name__, url_prefix="/patient")
 
@@ -69,17 +69,22 @@ def appointments():
         appointment_time = request.form["appointment_time"]
         reason = request.form.get("reason", "")
 
-        execute(
-            """INSERT INTO appointments (patient_id, doctor_id, appointment_date, appointment_time, reason)
-               VALUES (%s, %s, %s, %s, %s)""",
-            (_pid(), doctor_id, appointment_date, appointment_time, reason),
-        )
-        flash("Appointment booked.", "success")
+        try:
+            # Validation (past date, inactive doctor, slot clash) lives in the procedure.
+            execute(
+                "CALL sp_book_appointment(%s, %s, %s, %s, %s)",
+                (_pid(), doctor_id, appointment_date, appointment_time, reason),
+            )
+            flash("Appointment booked.", "success")
+        except DatabaseError as e:
+            flash(error_message(e), "danger")
         return redirect(url_for("patient.appointments"))
 
     doctors = query_all(
         """SELECT d.doctor_id, d.full_name, d.specialization, dep.name AS department
-           FROM doctors d LEFT JOIN departments dep ON d.department_id = dep.department_id
+           FROM doctors d
+           JOIN users u ON u.user_id = d.user_id AND u.is_active
+           LEFT JOIN departments dep ON d.department_id = dep.department_id
            ORDER BY d.full_name"""
     )
     my_appointments = query_all(

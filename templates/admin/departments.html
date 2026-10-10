@@ -22,12 +22,19 @@
         <div class="card">
             <div class="table-responsive">
                 <table class="table mb-0 align-middle">
-                    <thead><tr><th>Department</th><th>Doctors</th></tr></thead>
+                    <thead><tr><th>Department</th><th>Doctors</th><th></th></tr></thead>
                     <tbody>
                         {% for d in departments %}
-                        <tr><td>{{ d.name }}</td><td>{{ d.doctor_count }}</td></tr>
+                        <tr>
+                            <td>{{ d.name }}</td><td>{{ d.doctor_count }}</td>
+                            <td class="text-end">
+                                <form method="POST" action="{{ url_for('admin.delete_department', department_id=d.department_id) }}" onsubmit="return confirm('Delete {{ d.name }}? Its doctors will become unassigned.');">
+                                    <button class="btn btn-sm btn-outline-danger">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
                         {% else %}
-                        <tr><td colspan="2" class="text-muted text-center py-3">No departments yet.</td></tr>
+                        <tr><td colspan="3" class="text-muted text-center py-3">No departments yet.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

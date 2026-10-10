@@ -14,7 +14,7 @@
                         <select class="form-select" name="doctor_id" required>
                             <option value="" disabled selected>Select a doctor</option>
                             {% for d in doctors %}
-                            <option value="{{ d.doctor_id }}">Dr. {{ d.full_name }} &mdash; {{ d.specialization or 'General' }} ({{ d.department or 'N/A' }})</option>
+                            <option value="{{ d.doctor_id }}">{{ d.full_name }} &mdash; {{ d.specialization or 'General' }} ({{ d.department or 'N/A' }})</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -45,7 +45,7 @@
                     <tbody>
                         {% for a in appointments %}
                         <tr>
-                            <td>Dr. {{ a.doctor_name }}<div class="small text-muted">{{ a.specialization or '' }}</div></td>
+                            <td>{{ a.doctor_name }}<div class="small text-muted">{{ a.specialization or '' }}</div></td>
                             <td>{{ a.appointment_date }}</td>
                             <td>{{ a.appointment_time }}</td>
                             <td><span class="badge status-{{ a.status|lower }}">{{ a.status }}</span></td>

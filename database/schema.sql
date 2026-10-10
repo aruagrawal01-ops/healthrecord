@@ -1,9 +1,11 @@
 -- ============================================================
 -- Patient Health Record Management System
 -- Database Schema (PostgreSQL)
--- Normalized to 3NF
+-- Normalized to BCNF
+-- Run order: schema.sql -> advanced_features.sql -> seed_data.sql -> bulk_demo_data.sql
 -- ============================================================
 
+DROP TABLE IF EXISTS audit_log CASCADE;
 DROP TABLE IF EXISTS lab_reports CASCADE;
 DROP TABLE IF EXISTS lab_tests CASCADE;
 DROP TABLE IF EXISTS medical_records CASCADE;
@@ -141,6 +143,24 @@ CREATE INDEX idx_appointments_doctor ON appointments(doctor_id);
 CREATE INDEX idx_records_patient ON medical_records(patient_id);
 CREATE INDEX idx_labtests_patient ON lab_tests(patient_id);
 CREATE INDEX idx_labtests_status ON lab_tests(status);
+
+-- Appointment clash rule: a doctor cannot have two live bookings in the
+-- same slot. Partial, so a Cancelled slot can be booked again.
+CREATE UNIQUE INDEX uq_doctor_slot ON appointments(doctor_id, appointment_date, appointment_time)
+    WHERE status <> 'Cancelled';
+
+-- ------------------------------------------------------------
+-- Audit log: written only by trg_medical_record_audit
+-- (see advanced_features.sql). Support table, outside the core model.
+-- ------------------------------------------------------------
+CREATE TABLE audit_log (
+    log_id SERIAL PRIMARY KEY,
+    table_name VARCHAR(50) NOT NULL,
+    operation VARCHAR(10) NOT NULL CHECK (operation IN ('INSERT', 'UPDATE', 'DELETE')),
+    record_id INTEGER NOT NULL,
+    details TEXT,
+    changed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 
 -- ------------------------------------------------------------
 -- Trigger: auto-mark a lab test Completed as soon as its report

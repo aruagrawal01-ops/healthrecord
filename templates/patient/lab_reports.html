@@ -11,7 +11,7 @@
                 {% for t in tests %}
                 <tr>
                     <td>{{ t.test_name }}</td>
-                    <td>Dr. {{ t.requested_by }}</td>
+                    <td>{{ t.requested_by }}</td>
                     <td><span class="badge status-{{ t.status|lower }}">{{ t.status }}</span></td>
                     <td>{{ t.result_summary or '—' }}</td>
                     <td>

@@ -48,7 +48,7 @@
                 {% for a in recent %}
                 <tr>
                     <td>{{ a.patient_name }}</td>
-                    <td>Dr. {{ a.doctor_name }}</td>
+                    <td>{{ a.doctor_name }}</td>
                     <td>{{ a.appointment_date }}</td>
                     <td><span class="badge status-{{ a.status|lower }}">{{ a.status }}</span></td>
                 </tr>

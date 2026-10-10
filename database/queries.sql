@@ -71,3 +71,52 @@ JOIN lab_assistants la ON lr.lab_assistant_id = la.lab_assistant_id;
 SELECT status FROM lab_tests WHERE test_name = 'Lipid Profile';
 --    INSERT INTO lab_reports (...) VALUES (...);   -- fired from the app
 --    After the insert, re-run the SELECT above -> status is now 'Completed'.
+
+-- ============================================================
+-- Review 2 additions
+-- ============================================================
+
+-- 10. GROUP BY + HAVING: departments with more than one completed visit
+SELECT dep.name AS department, COUNT(*) AS completed_visits
+FROM appointments a
+JOIN doctors d ON a.doctor_id = d.doctor_id
+JOIN departments dep ON d.department_id = dep.department_id
+WHERE a.status = 'Completed'
+GROUP BY dep.name
+HAVING COUNT(*) > 1
+ORDER BY completed_visits DESC;
+
+-- 11. Correlated subquery: each patient's most recent diagnosis
+SELECT p.full_name, mr.diagnosis, mr.created_at::date AS on_date
+FROM patients p
+JOIN medical_records mr ON mr.patient_id = p.patient_id
+WHERE mr.created_at = (SELECT MAX(created_at) FROM medical_records WHERE patient_id = p.patient_id)
+ORDER BY p.full_name;
+
+-- 12. EXISTS: patients with at least one lab test still pending
+SELECT p.full_name, p.phone
+FROM patients p
+WHERE EXISTS (SELECT 1 FROM lab_tests lt WHERE lt.patient_id = p.patient_id AND lt.status = 'Pending');
+
+-- 13. LEFT JOIN + COALESCE: every lab assistant's workload (0 if none)
+SELECT la.full_name, COALESCE(COUNT(lr.report_id), 0) AS reports_uploaded
+FROM lab_assistants la
+LEFT JOIN lab_reports lr ON lr.lab_assistant_id = la.lab_assistant_id
+GROUP BY la.full_name;
+
+-- 14. SQL functions: user-defined + built-in
+SELECT full_name, fn_patient_age(dob) AS age, UPPER(blood_group) AS blood_group,
+       CASE WHEN fn_patient_age(dob) < 18 THEN 'Minor' ELSE 'Adult' END AS category
+FROM patients ORDER BY age DESC;
+
+SELECT full_name, fn_doctor_load(doctor_id, CURRENT_DATE) AS bookings_today FROM doctors;
+
+-- 15. Aggregate functions together: appointment statistics
+SELECT COUNT(*) AS total, MIN(appointment_date) AS first_visit, MAX(appointment_date) AS last_visit,
+       ROUND(AVG(fn_patient_age(p.dob)), 1) AS avg_patient_age
+FROM appointments a JOIN patients p ON p.patient_id = a.patient_id;
+
+-- 16. Stored procedures (errors are intentional -- they show the validation)
+CALL sp_book_appointment(1, 1, CURRENT_DATE + 30, '16:00', 'Routine check-up');   -- succeeds
+CALL sp_book_appointment(2, 1, CURRENT_DATE + 30, '16:00', 'Clash');              -- ERROR: already booked
+CALL sp_book_appointment(2, 1, CURRENT_DATE - 1, '16:00', 'Past');                -- ERROR: date in the past

@@ -11,7 +11,7 @@
                 <tr>
                     <td>{{ t.patient_name }}</td>
                     <td>{{ t.test_name }}</td>
-                    <td>Dr. {{ t.requested_by }}</td>
+                    <td>{{ t.requested_by }}</td>
                     <td>{{ t.requested_at.strftime('%d %b %Y %H:%M') }}</td>
                     <td><a href="{{ url_for('lab.upload_report', lab_test_id=t.lab_test_id) }}" class="btn btn-sm btn-primary"><i class="bi bi-upload"></i> Upload Result</a></td>
                 </tr>

@@ -10,7 +10,7 @@
             <h5 class="card-title">{{ r.diagnosis }}</h5>
             <span class="text-muted small">{{ r.created_at.strftime('%d %b %Y') }}</span>
         </div>
-        <div class="small text-muted mb-2">Dr. {{ r.doctor_name }} &mdash; {{ r.specialization or '' }}</div>
+        <div class="small text-muted mb-2">{{ r.doctor_name }} &mdash; {{ r.specialization or '' }}</div>
         {% if r.prescription %}
         <p class="mb-1"><strong>Prescription:</strong> {{ r.prescription }}</p>
         {% endif %}

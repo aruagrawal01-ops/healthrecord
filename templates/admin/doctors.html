@@ -57,13 +57,14 @@
             <div class="card-header">All Doctors</div>
             <div class="table-responsive">
                 <table class="table table-hover mb-0 align-middle">
-                    <thead><tr><th>Name</th><th>Specialization</th><th>Department</th><th>Status</th><th></th></tr></thead>
+                    <thead><tr><th>Name</th><th>Specialization</th><th>Department</th><th>Today</th><th>Status</th><th></th></tr></thead>
                     <tbody>
                         {% for d in doctors %}
                         <tr>
-                            <td>Dr. {{ d.full_name }}<div class="small text-muted">{{ d.username }}</div></td>
+                            <td>{{ d.full_name }}<div class="small text-muted">{{ d.username }}</div></td>
                             <td>{{ d.specialization or '—' }}</td>
                             <td>{{ d.department or '—' }}</td>
+                            <td>{{ d.todays_load }}</td>
                             <td>{% if d.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}</td>
                             <td>
                                 <form method="POST" action="{{ url_for('admin.toggle_doctor', doctor_id=d.doctor_id) }}">
@@ -72,7 +73,7 @@
                             </td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="5" class="text-muted text-center py-3">No doctors yet.</td></tr>
+                        <tr><td colspan="6" class="text-muted text-center py-3">No doctors yet.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

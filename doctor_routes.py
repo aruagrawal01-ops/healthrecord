@@ -1,7 +1,7 @@
 from flask import Blueprint, Response, abort, flash, redirect, render_template, request, session, url_for
 
 from auth import role_required
-from db import execute, query_all, query_one
+from db import DatabaseError, error_message, execute, query_all, query_one
 
 doctor_bp = Blueprint("doctor", __name__, url_prefix="/doctor")
 
@@ -79,7 +79,7 @@ def patients():
 @doctor_bp.route("/patients/<int:patient_id>")
 @role_required("doctor")
 def patient_detail(patient_id):
-    person = query_one("SELECT * FROM patients WHERE patient_id = %s", (patient_id,))
+    person = query_one("SELECT *, fn_patient_age(dob) AS age FROM patients WHERE patient_id = %s", (patient_id,))
     if person is None:
         abort(404)
     records = query_all(
@@ -121,18 +121,28 @@ def add_record(patient_id):
         notes = request.form.get("notes", "").strip()
         appointment_id = request.form.get("appointment_id") or None
 
-        execute(
-            """INSERT INTO medical_records
-               (patient_id, doctor_id, appointment_id, diagnosis, prescription, notes)
-               VALUES (%s, %s, %s, %s, %s, %s)""",
-            (patient_id, _did(), appointment_id, diagnosis, prescription, notes),
-        )
-        flash("Medical record added.", "success")
+        try:
+            if appointment_id:
+                # Marks the visit Completed and saves the record in one transaction.
+                execute(
+                    "CALL sp_complete_visit(%s, %s, %s, %s, %s)",
+                    (appointment_id, _did(), diagnosis, prescription, notes),
+                )
+            else:
+                execute(
+                    """INSERT INTO medical_records (patient_id, doctor_id, diagnosis, prescription, notes)
+                       VALUES (%s, %s, %s, %s, %s)""",
+                    (patient_id, _did(), diagnosis, prescription, notes),
+                )
+            flash("Medical record added.", "success")
+        except DatabaseError as e:
+            flash(error_message(e), "danger")
         return redirect(url_for("doctor.patient_detail", patient_id=patient_id))
 
     open_appointments = query_all(
         """SELECT appointment_id, appointment_date, appointment_time FROM appointments
-           WHERE patient_id = %s AND doctor_id = %s ORDER BY appointment_date DESC""",
+           WHERE patient_id = %s AND doctor_id = %s AND status = 'Scheduled'
+           ORDER BY appointment_date""",
         (patient_id, _did()),
     )
     return render_template(

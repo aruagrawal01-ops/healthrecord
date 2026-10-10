@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Audit Log{% endblock %}
+{% block content %}
+<h3 class="mb-1"><i class="bi bi-journal-text"></i> Audit Log</h3>
+<p class="text-muted small mb-4">Written automatically by the <code>trg_medical_record_audit</code> trigger on every insert, update or delete of a medical record.</p>
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead><tr><th>#</th><th>When</th><th>Table</th><th>Operation</th><th>Record</th><th>Details</th></tr></thead>
+            <tbody>
+                {% for r in rows %}
+                <tr>
+                    <td>{{ r.log_id }}</td>
+                    <td>{{ r.changed_at.strftime('%d %b %Y %H:%M') }}</td>
+                    <td>{{ r.table_name }}</td>
+                    <td><span class="badge bg-{{ 'success' if r.operation == 'INSERT' else 'warning' if r.operation == 'UPDATE' else 'danger' }}">{{ r.operation }}</span></td>
+                    <td>{{ r.record_id }}</td>
+                    <td>{{ r.details }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-muted text-center py-3">No changes logged yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

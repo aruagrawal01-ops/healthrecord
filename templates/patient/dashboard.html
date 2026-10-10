@@ -40,7 +40,7 @@
             <div class="list-group list-group-flush">
                 {% for a in upcoming %}
                 <div class="list-group-item">
-                    <div class="fw-semibold">Dr. {{ a.doctor_name }}</div>
+                    <div class="fw-semibold">{{ a.doctor_name }}</div>
                     <div class="small text-muted">{{ a.appointment_date }} at {{ a.appointment_time }} &mdash; {{ a.reason }}</div>
                 </div>
                 {% else %}
@@ -56,7 +56,7 @@
                 {% for r in recent_records %}
                 <div class="list-group-item">
                     <div class="fw-semibold">{{ r.diagnosis }}</div>
-                    <div class="small text-muted">Dr. {{ r.doctor_name }} &mdash; {{ r.created_at.strftime('%d %b %Y') }}</div>
+                    <div class="small text-muted">{{ r.doctor_name }} &mdash; {{ r.created_at.strftime('%d %b %Y') }}</div>
                 </div>
                 {% else %}
                 <div class="list-group-item text-muted">No records yet.</div>

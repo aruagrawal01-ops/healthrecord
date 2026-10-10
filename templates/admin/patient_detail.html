@@ -17,7 +17,7 @@
                         <strong>{{ r.diagnosis }}</strong>
                         <span class="small text-muted">{{ r.created_at.strftime('%d %b %Y') }}</span>
                     </div>
-                    <div class="small text-muted">Dr. {{ r.doctor_name }}</div>
+                    <div class="small text-muted">{{ r.doctor_name }}</div>
                 </div>
                 {% else %}
                 <div class="list-group-item text-muted">No records yet.</div>
@@ -32,7 +32,7 @@
                 {% for a in appointments %}
                 <div class="list-group-item">
                     <div class="d-flex justify-content-between">
-                        <span>Dr. {{ a.doctor_name }} &mdash; {{ a.appointment_date }}</span>
+                        <span>{{ a.doctor_name }} &mdash; {{ a.appointment_date }}</span>
                         <span class="badge status-{{ a.status|lower }}">{{ a.status }}</span>
                     </div>
                 </div>

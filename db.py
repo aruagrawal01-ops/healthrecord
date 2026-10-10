@@ -1,4 +1,4 @@
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 import pg8000.dbapi
 from flask import current_app, g
@@ -12,13 +12,15 @@ def _connect_params(database_url):
         "host": parsed.hostname,
         "port": parsed.port or 5432,
         "database": parsed.path.lstrip("/"),
+        # Neon requires TLS; a local pgAdmin server usually has none (?sslmode=disable).
+        "ssl_context": None if parse_qs(parsed.query).get("sslmode") == ["disable"] else True,
     }
 
 
 def get_db():
     """Return a request-scoped pg8000 connection (pure-Python driver, no libpq needed)."""
     if "db" not in g:
-        g.db = pg8000.dbapi.connect(ssl_context=True, **_connect_params(current_app.config["DATABASE_URL"]))
+        g.db = pg8000.dbapi.connect(**_connect_params(current_app.config["DATABASE_URL"]))
     return g.db
 
 
@@ -54,8 +56,17 @@ def query_one(sql, params=None):
         cur.close()
 
 
+DatabaseError = pg8000.dbapi.DatabaseError
+
+
+def error_message(exc):
+    """The human-readable part of a PostgreSQL error (e.g. a RAISE EXCEPTION from a procedure)."""
+    info = exc.args[0] if exc.args and isinstance(exc.args[0], dict) else {}
+    return info.get("M", str(exc))
+
+
 def execute(sql, params=None):
-    """INSERT/UPDATE/DELETE. Commits and returns RETURNING row if present."""
+    """INSERT/UPDATE/DELETE/CALL. Commits and returns RETURNING row if present; rolls back on error."""
     conn = get_db()
     cur = conn.cursor()
     try:
@@ -66,6 +77,9 @@ def execute(sql, params=None):
             row = _row_to_dict(columns, cur.fetchone())
         conn.commit()
         return row
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         cur.close()
 

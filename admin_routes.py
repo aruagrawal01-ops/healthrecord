@@ -63,7 +63,8 @@ def doctors():
         return redirect(url_for("admin.doctors"))
 
     rows = query_all(
-        """SELECT d.*, u.username, u.email, u.is_active, dep.name AS department
+        """SELECT d.*, u.username, u.email, u.is_active, dep.name AS department,
+                  fn_doctor_load(d.doctor_id, CURRENT_DATE) AS todays_load
            FROM doctors d
            JOIN users u ON d.user_id = u.user_id
            LEFT JOIN departments dep ON d.department_id = dep.department_id
@@ -145,20 +146,36 @@ def departments():
     return render_template("admin/departments.html", departments=rows)
 
 
+@admin_bp.route("/departments/<int:department_id>/delete", methods=["POST"])
+@role_required("admin")
+def delete_department(department_id):
+    # doctors.department_id is ON DELETE SET NULL, so doctors stay and just lose the department.
+    execute("DELETE FROM departments WHERE department_id = %s", (department_id,))
+    flash("Department deleted. Its doctors are now unassigned.", "info")
+    return redirect(url_for("admin.departments"))
+
+
+@admin_bp.route("/audit-log")
+@role_required("admin")
+def audit_log():
+    rows = query_all("SELECT * FROM audit_log ORDER BY changed_at DESC, log_id DESC LIMIT 200")
+    return render_template("admin/audit_log.html", rows=rows)
+
+
 @admin_bp.route("/patients")
 @role_required("admin")
 def patients():
     search = request.args.get("q", "").strip()
     if search:
         rows = query_all(
-            """SELECT p.*, u.username, u.email, u.is_active FROM patients p
+            """SELECT p.*, fn_patient_age(p.dob) AS age, u.username, u.email, u.is_active FROM patients p
                JOIN users u ON p.user_id = u.user_id
                WHERE p.full_name ILIKE %s ORDER BY p.full_name""",
             (f"%{search}%",),
         )
     else:
         rows = query_all(
-            """SELECT p.*, u.username, u.email, u.is_active FROM patients p
+            """SELECT p.*, fn_patient_age(p.dob) AS age, u.username, u.email, u.is_active FROM patients p
                JOIN users u ON p.user_id = u.user_id ORDER BY p.full_name"""
         )
     return render_template("admin/patients.html", patients=rows, search=search)
