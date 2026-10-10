@@ -119,7 +119,7 @@ serverless Postgres that's the standard match for Vercel deployments.
 1. Go to **neon.tech** and sign up (free tier).
 2. Create a new project → it gives you a **connection string** that looks like:
    `postgresql://user:password@ep-xxxx.region.aws.neon.tech/neondb?sslmode=require`
-3. Open Neon's **SQL Editor** (or connect via pgAdmin4 using that connection string) and run the same four scripts in the same order — same as the local setup, just against this remote DB.
+3. Open Neon's **SQL Editor** (or connect via pgAdmin4 using that connection string) and run the same four scripts in the same order — same as the local setup. The app sets each session to Indian time (`Asia/Kolkata`), so "today" matches the hospital's clock even though Neon runs in UTC, just against this remote DB.
 
 ### 6.2 Push the project to GitHub
 

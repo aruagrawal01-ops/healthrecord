@@ -20,7 +20,13 @@ def _connect_params(database_url):
 def get_db():
     """Return a request-scoped pg8000 connection (pure-Python driver, no libpq needed)."""
     if "db" not in g:
-        g.db = pg8000.dbapi.connect(**_connect_params(current_app.config["DATABASE_URL"]))
+        conn = pg8000.dbapi.connect(**_connect_params(current_app.config["DATABASE_URL"]))
+        # CURRENT_DATE etc. follow the hospital's clock, not the server's (Neon runs in UTC).
+        cur = conn.cursor()
+        cur.execute("SET TIME ZONE 'Asia/Kolkata'")
+        cur.close()
+        conn.commit()
+        g.db = conn
     return g.db
 
 
