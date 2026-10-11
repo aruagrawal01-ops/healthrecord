@@ -1,41 +1,96 @@
 {% extends "base.html" %}
+{% from "macros.html" import stat, status, empty, avatar %}
 {% block title %}Doctor Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
 {% block content %}
-<h3 class="mb-4">Welcome, {{ current_name }}</h3>
+{% set remaining = appointments|selectattr('status', 'equalto', 'Scheduled')|list %}
+<div class="hero mb-4">
+    <div class="row align-items-center g-3">
+        <div class="col-lg-8">
+            <div class="small fw-semibold opacity-75 mb-1">{{ today.strftime('%A, %d %B %Y') }}</div>
+            <h2>Welcome, {{ current_name }}</h2>
+            <p>You have <b>{{ remaining|length }}</b> patient{{ '' if remaining|length == 1 else 's' }} still to see today and {{ stats.pending_labs }} lab result{{ '' if stats.pending_labs == 1 else 's' }} awaited.</p>
+        </div>
+        <div class="col-lg-4 text-lg-end">
+            <a href="{{ url_for('doctor.schedule') }}" class="btn btn-light me-1"><i class="bi bi-calendar-week me-1"></i> Week view</a>
+            <a href="{{ url_for('doctor.patients') }}" class="btn btn-outline-light"><i class="bi bi-search me-1"></i> Find patient</a>
+        </div>
+    </div>
+</div>
 
-<div class="row g-4">
-    <div class="col-md-7">
-        <div class="card">
-            <div class="card-header"><i class="bi bi-calendar-day"></i> Today's Appointments</div>
-            <div class="list-group list-group-flush">
-                {% for a in appointments %}
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="fw-semibold">{{ a.patient_name }}</div>
-                        <div class="small text-muted">{{ a.appointment_time }} &mdash; {{ a.reason }}</div>
+<div class="row g-3 mb-4 stagger">
+    <div class="col-6 col-xl-3">{{ stat('calendar-day', 'g1', appointments|length, "Today's Appointments") }}</div>
+    <div class="col-6 col-xl-3">{{ stat('calendar-week', 'g3', stats.week, 'Booked Next 7 Days') }}</div>
+    <div class="col-6 col-xl-3">{{ stat('people', 'g4', stats.patients, 'Patients Under Care') }}</div>
+    <div class="col-6 col-xl-3">{{ stat('check2-all', 'g2', stats.completed, 'Visits Completed') }}</div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-7">
+        <div class="card-x h-100">
+            <div class="card-head"><h2><span class="icon-chip"><i class="bi bi-calendar-day"></i></span>Today's Appointments</h2><span class="badge-soft st-scheduled">{{ remaining|length }} remaining</span></div>
+            <div class="card-body">
+                <div class="timeline">
+                    {% for a in appointments %}
+                    <div class="tl-item {{ 'violet' if a.status == 'Scheduled' else ('' if a.status == 'Completed' else 'coral') }}">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="fw-bold mono" style="min-width:48px">{{ a.appointment_time.strftime('%H:%M') }}</div>
+                            {{ avatar(a.patient_name, 'sm') }}
+                            <div class="flex-grow-1 min-w-0">
+                                <div class="fw-semibold">{{ a.patient_name }} <span class="small text-muted">&middot; {{ a.age }} yrs, {{ a.gender }}</span></div>
+                                <div class="small text-muted text-truncate">{{ a.reason }}</div>
+                            </div>
+                            {{ status(a.status) }}
+                            {% if a.status == 'Scheduled' %}
+                            <a href="{{ url_for('doctor.add_record', patient_id=a.patient_id, appointment_id=a.appointment_id) }}" class="btn btn-primary btn-sm" data-bs-toggle="tooltip" title="Record diagnosis and complete the visit"><i class="bi bi-clipboard2-plus"></i></a>
+                            {% endif %}
+                            <a href="{{ url_for('doctor.patient_detail', patient_id=a.patient_id) }}" class="btn btn-ghost btn-sm">View</a>
+                        </div>
                     </div>
-                    <a href="{{ url_for('doctor.patient_detail', patient_id=a.patient_id) }}" class="btn btn-sm btn-outline-primary">View</a>
+                    {% else %}{{ empty('cup-hot', 'No appointments today. Enjoy the quiet.') }}{% endfor %}
                 </div>
-                {% else %}
-                <div class="list-group-item text-muted">No appointments today.</div>
-                {% endfor %}
             </div>
         </div>
     </div>
-    <div class="col-md-5">
-        <div class="card">
-            <div class="card-header"><i class="bi bi-hourglass-split"></i> Pending Lab Tests You Requested</div>
-            <div class="list-group list-group-flush">
+    <div class="col-lg-5">
+        <div class="card-x h-100">
+            <div class="card-head"><h2><span class="icon-chip amber"><i class="bi bi-hourglass-split"></i></span>Pending Lab Tests You Requested</h2></div>
+            <div class="card-body">
                 {% for t in pending_tests %}
-                <div class="list-group-item">
-                    <div class="fw-semibold">{{ t.test_name }}</div>
-                    <div class="small text-muted">{{ t.patient_name }} &mdash; requested {{ t.requested_at.strftime('%d %b') }}</div>
+                <div class="d-flex align-items-center gap-2 {{ 'mb-3' if not loop.last }}">
+                    <div class="icon-chip amber"><i class="bi bi-droplet-half"></i></div>
+                    <div class="flex-grow-1 min-w-0"><div class="fw-semibold">{{ t.test_name }}</div><div class="small text-muted">{{ t.patient_name }} &middot; requested {{ t.requested_at.strftime('%d %b') }}</div></div>
+                    <span class="badge-soft {{ 'st-inactive' if t.days > 3 else 'st-pending' }}">{{ t.days }}d</span>
                 </div>
-                {% else %}
-                <div class="list-group-item text-muted">No pending tests.</div>
-                {% endfor %}
+                {% else %}{{ empty('check2-circle', 'No pending tests.') }}{% endfor %}
             </div>
         </div>
     </div>
 </div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card-x h-100">
+            <div class="card-head"><h2><span class="icon-chip violet"><i class="bi bi-bar-chart"></i></span>Visits per week, last 12 weeks</h2></div>
+            <div class="card-body"><div style="height:260px"><canvas id="trendChart"></canvas></div></div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card-x h-100">
+            <div class="card-head"><h2><span class="icon-chip coral"><i class="bi bi-pie-chart"></i></span>Why patients visit</h2></div>
+            <div class="card-body"><div style="height:260px"><canvas id="reasonChart"></canvas></div></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const trend = {{ trend|tojson }}, reasons = {{ reasons|tojson }};
+mrChart("trendChart", { type: "bar", data: { labels: trend.labels, datasets: [
+    { label: "Completed", data: trend.completed, backgroundColor: "#14b8a6", borderRadius: 6 },
+    { label: "Cancelled", data: trend.cancelled, backgroundColor: "#fb7185", borderRadius: 6 }] },
+    options: { plugins: { legend: { position: "bottom" } }, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, ticks: { precision: 0 } } } } });
+mrChart("reasonChart", { type: "doughnut", data: { labels: reasons.labels, datasets: [{ data: reasons.values, backgroundColor: MR_COLORS, borderWidth: 0 }] },
+    options: { cutout: "65%", plugins: { legend: { position: "bottom" } } } });
+</script>
 {% endblock %}

@@ -1,7 +1,16 @@
+from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs, urlparse
 
 import pg8000.dbapi
 from flask import current_app, g
+
+
+IST = timezone(timedelta(hours=5, minutes=30))  # India has no daylight saving, so a fixed offset is exact
+
+
+def today():
+    """The hospital's calendar date (matches CURRENT_DATE in database sessions)."""
+    return datetime.now(IST).date()
 
 
 def _connect_params(database_url):

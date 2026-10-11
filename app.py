@@ -23,7 +23,21 @@ def create_app():
 
     @app.context_processor
     def inject_session():
-        return {"current_role": session.get("role"), "current_name": session.get("full_name")}
+        role = session.get("role")
+        ctx = {"current_role": role, "current_name": session.get("full_name"), "notices": [], "nav_counts": {}}
+        if role:
+            ctx["notices"] = db.query_all(
+                """SELECT title, body, is_pinned FROM announcements
+                   WHERE audience IN ('all', %s) ORDER BY is_pinned DESC, created_at DESC LIMIT 5""",
+                (role,),
+            )
+            if role == "lab_assistant":
+                ctx["nav_counts"]["pending_tests"] = db.query_one("SELECT COUNT(*) AS n FROM lab_tests WHERE status = 'Pending'")["n"]
+            elif role == "doctor":
+                ctx["nav_counts"]["today"] = db.query_one(
+                    "SELECT fn_doctor_load(%s, CURRENT_DATE) AS n", (session["profile_id"],)
+                )["n"]
+        return ctx
 
     @app.errorhandler(404)
     def not_found(e):

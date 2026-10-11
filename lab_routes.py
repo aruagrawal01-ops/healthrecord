@@ -21,16 +21,43 @@ def _allowed_file(filename):
 @lab_bp.route("/dashboard")
 @role_required("lab_assistant")
 def dashboard():
-    pending_count = query_one("SELECT COUNT(*) AS n FROM lab_tests WHERE status = 'Pending'")
+    stats = query_one(
+        """SELECT
+               (SELECT COUNT(*) FROM lab_tests WHERE status = 'Pending') AS pending,
+               (SELECT COUNT(*) FROM lab_tests WHERE status = 'Pending' AND requested_at < LOCALTIMESTAMP - INTERVAL '3 days') AS overdue,
+               (SELECT COUNT(*) FROM lab_reports WHERE lab_assistant_id = %s) AS mine,
+               (SELECT ROUND(AVG(EXTRACT(EPOCH FROM lr.uploaded_at - lt.requested_at) / 3600)::numeric, 1)
+                  FROM lab_reports lr JOIN lab_tests lt ON lt.lab_test_id = lr.lab_test_id
+                  WHERE lr.uploaded_at > LOCALTIMESTAMP - INTERVAL '30 days') AS avg_hours""",
+        (_lid(),),
+    )
+    daily = query_all(
+        """SELECT to_char(day, 'DD Mon') AS label,
+                  COUNT(lr.report_id) FILTER (WHERE lr.lab_assistant_id = %s) AS mine,
+                  COUNT(lr.report_id) AS team
+           FROM generate_series(CURRENT_DATE - 13, CURRENT_DATE, INTERVAL '1 day') AS day
+           LEFT JOIN lab_reports lr ON lr.uploaded_at::date = day::date
+           GROUP BY day ORDER BY day""",
+        (_lid(),),
+    )
+    by_type = query_all("SELECT test_name, COUNT(*) AS n FROM lab_tests GROUP BY test_name ORDER BY n DESC LIMIT 8")
+    queue = query_all(
+        """SELECT lt.lab_test_id, lt.test_name, lt.requested_at, p.full_name AS patient_name,
+                  (CURRENT_DATE - lt.requested_at::date) AS days
+           FROM lab_tests lt JOIN patients p ON lt.patient_id = p.patient_id
+           WHERE lt.status = 'Pending' ORDER BY lt.requested_at LIMIT 6"""
+    )
     recent_uploads = query_all(
-        """SELECT lr.*, lt.test_name, p.full_name AS patient_name FROM lab_reports lr
+        """SELECT lr.report_id, lr.uploaded_at, lt.test_name, p.full_name AS patient_name FROM lab_reports lr
            JOIN lab_tests lt ON lr.lab_test_id = lt.lab_test_id
            JOIN patients p ON lt.patient_id = p.patient_id
            WHERE lr.lab_assistant_id = %s ORDER BY lr.uploaded_at DESC LIMIT 5""",
         (_lid(),),
     )
     return render_template(
-        "lab/dashboard.html", pending_count=pending_count["n"], recent_uploads=recent_uploads
+        "lab/dashboard.html", stats=stats, queue=queue, recent_uploads=recent_uploads,
+        daily={"labels": [r["label"] for r in daily], "mine": [r["mine"] for r in daily], "team": [r["team"] for r in daily]},
+        by_type={"labels": [r["test_name"] for r in by_type], "values": [r["n"] for r in by_type]},
     )
 
 
@@ -38,13 +65,14 @@ def dashboard():
 @role_required("lab_assistant")
 def pending_tests():
     tests = query_all(
-        """SELECT lt.*, p.full_name AS patient_name, doc.full_name AS requested_by
+        """SELECT lt.*, p.full_name AS patient_name, fn_patient_age(p.dob) AS age, doc.full_name AS requested_by,
+                  (CURRENT_DATE - lt.requested_at::date) AS days
            FROM lab_tests lt
            JOIN patients p ON lt.patient_id = p.patient_id
            JOIN doctors doc ON lt.doctor_id = doc.doctor_id
            WHERE lt.status = 'Pending' ORDER BY lt.requested_at ASC"""
     )
-    return render_template("lab/pending_tests.html", tests=tests)
+    return render_template("lab/pending_tests.html", tests=tests, test_types=sorted({t["test_name"] for t in tests}))
 
 
 @lab_bp.route("/upload/<int:lab_test_id>", methods=["GET", "POST"])
@@ -98,7 +126,9 @@ def upload_report(lab_test_id):
 @role_required("lab_assistant")
 def report_history():
     reports = query_all(
-        """SELECT lr.*, lt.test_name, p.full_name AS patient_name FROM lab_reports lr
+        """SELECT lr.report_id, lr.result_summary, lr.file_name, lr.uploaded_at, lt.test_name, p.full_name AS patient_name,
+                  ROUND(EXTRACT(EPOCH FROM lr.uploaded_at - lt.requested_at) / 3600) AS hours
+           FROM lab_reports lr
            JOIN lab_tests lt ON lr.lab_test_id = lt.lab_test_id
            JOIN patients p ON lt.patient_id = p.patient_id
            WHERE lr.lab_assistant_id = %s ORDER BY lr.uploaded_at DESC""",

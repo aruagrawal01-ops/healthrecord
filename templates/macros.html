@@ -1,0 +1,24 @@
+{% macro avatar(name, size='') -%}
+{%- set clean = (name or '?').replace('Dr. ', '') -%}
+{%- set parts = clean.split() -%}
+<span class="avatar {{ size }} c{{ (clean|length) % 4 + 1 }}">{{ (parts[0][0] ~ (parts[-1][0] if parts|length > 1 else ''))|upper }}</span>
+{%- endmacro %}
+
+{% macro status(s) -%}
+<span class="badge-soft st-{{ (s or 'info')|lower }}">{{ s }}</span>
+{%- endmacro %}
+
+{% macro stat(icon, grad, value, label, suffix='', sub='') -%}
+<div class="card-x stat lift">
+    <div class="bubble {{ grad }}"><i class="bi bi-{{ icon }}"></i></div>
+    <div class="min-w-0">
+        <div class="value" data-count="{{ value }}" data-suffix="{{ suffix }}">{{ value }}{{ suffix }}</div>
+        <div class="label">{{ label }}</div>
+        {% if sub %}<div class="trend text-muted fw-semibold">{{ sub }}</div>{% endif %}
+    </div>
+</div>
+{%- endmacro %}
+
+{% macro empty(icon, text) -%}
+<div class="empty"><i class="bi bi-{{ icon }}"></i>{{ text }}</div>
+{%- endmacro %}

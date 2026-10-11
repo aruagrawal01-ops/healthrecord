@@ -1,31 +1,74 @@
 {% extends "base.html" %}
+{% from "macros.html" import stat, empty %}
 {% block title %}Lab Dashboard{% endblock %}
+{% block page_title %}Lab Dashboard{% endblock %}
 {% block content %}
-<h3 class="mb-4">Welcome, {{ current_name }}</h3>
-
-<div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card stat-card border-warning">
+<div class="hero mb-4">
+    <div class="row align-items-center g-3">
+        <div class="col-lg-8">
+            <h2>Hello, {{ current_name }}</h2>
+            <p>{{ stats.pending }} test{{ '' if stats.pending == 1 else 's' }} are waiting in the queue{% if stats.overdue %}, {{ stats.overdue }} of them older than 3 days{% endif %}.</p>
+        </div>
+        <div class="col-lg-4 text-lg-end"><a href="{{ url_for('lab.pending_tests') }}" class="btn btn-light"><i class="bi bi-hourglass-split me-1"></i> Open the queue</a></div>
+    </div>
+</div>
+<div class="row g-3 mb-4 stagger">
+    <div class="col-6 col-xl-3">{{ stat('hourglass-split', 'g1', stats.pending, 'Pending Tests (all)') }}</div>
+    <div class="col-6 col-xl-3">{{ stat('exclamation-triangle', 'g2', stats.overdue, 'Waiting Over 3 Days') }}</div>
+    <div class="col-6 col-xl-3">{{ stat('cloud-upload', 'g3', stats.mine, 'Reports I Uploaded') }}</div>
+    <div class="col-6 col-xl-3">{{ stat('stopwatch', 'g4', stats.avg_hours or 0, 'Avg Turnaround (30 days)', ' h') }}</div>
+</div>
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="card-x h-100">
+            <div class="card-head"><h2><span class="icon-chip violet"><i class="bi bi-bar-chart"></i></span>Reports uploaded, last 14 days</h2></div>
+            <div class="card-body"><div style="height:260px"><canvas id="dailyChart"></canvas></div></div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card-x h-100">
+            <div class="card-head"><h2><span class="icon-chip amber"><i class="bi bi-pie-chart"></i></span>Most requested tests</h2></div>
+            <div class="card-body"><div style="height:260px"><canvas id="typeChart"></canvas></div></div>
+        </div>
+    </div>
+</div>
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card-x h-100">
+            <div class="card-head"><h2><span class="icon-chip coral"><i class="bi bi-list-ol"></i></span>Oldest in the queue</h2><a href="{{ url_for('lab.pending_tests') }}" class="small fw-semibold">View all</a></div>
             <div class="card-body">
-                <div class="text-muted small">Pending Tests (all)</div>
-                <div class="fs-2 fw-bold">{{ pending_count }}</div>
-                <a href="{{ url_for('lab.pending_tests') }}" class="small">View queue &rarr;</a>
+                {% for t in queue %}
+                <div class="d-flex align-items-center gap-3 {{ 'mb-3' if not loop.last }}">
+                    <span class="badge-soft {{ 'st-inactive' if t.days > 3 else ('st-pending' if t.days > 1 else 'st-completed') }}">{{ t.days }}d</span>
+                    <div class="flex-grow-1 min-w-0"><div class="fw-semibold">{{ t.test_name }}</div><div class="small text-muted">{{ t.patient_name }} &middot; {{ t.requested_at.strftime('%d %b %H:%M') }}</div></div>
+                    <a href="{{ url_for('lab.upload_report', lab_test_id=t.lab_test_id) }}" class="btn btn-soft btn-sm"><i class="bi bi-upload"></i> Upload</a>
+                </div>
+                {% else %}{{ empty('check2-all', 'Queue is empty. All caught up!') }}{% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card-x h-100">
+            <div class="card-head"><h2><span class="icon-chip"><i class="bi bi-cloud-check"></i></span>My Recent Uploads</h2></div>
+            <div class="card-body">
+                <div class="timeline">
+                    {% for r in recent_uploads %}
+                    <div class="tl-item"><div class="tl-time">{{ r.uploaded_at.strftime('%d %b %Y %H:%M') }}</div><div class="fw-semibold">{{ r.test_name }}</div><div class="small text-muted">{{ r.patient_name }}</div></div>
+                    {% else %}{{ empty('cloud', 'No uploads yet.') }}{% endfor %}
+                </div>
             </div>
         </div>
     </div>
 </div>
-
-<div class="card">
-    <div class="card-header"><i class="bi bi-upload"></i> My Recent Uploads</div>
-    <div class="list-group list-group-flush">
-        {% for r in recent_uploads %}
-        <div class="list-group-item">
-            <div class="fw-semibold">{{ r.test_name }} &mdash; {{ r.patient_name }}</div>
-            <div class="small text-muted">{{ r.uploaded_at.strftime('%d %b %Y %H:%M') }}</div>
-        </div>
-        {% else %}
-        <div class="list-group-item text-muted">No uploads yet.</div>
-        {% endfor %}
-    </div>
-</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const daily = {{ daily|tojson }}, types = {{ by_type|tojson }};
+mrChart("dailyChart", { type: "bar", data: { labels: daily.labels, datasets: [
+    { label: "Whole lab", data: daily.team, backgroundColor: "rgba(99,102,241,.25)", borderRadius: 6 },
+    { label: "Me", data: daily.mine, backgroundColor: "#14b8a6", borderRadius: 6 }] },
+    options: { plugins: { legend: { position: "bottom" } }, scales: { x: { grid: { display: false } }, y: { ticks: { precision: 0 } } } } });
+mrChart("typeChart", { type: "doughnut", data: { labels: types.labels, datasets: [{ data: types.values, backgroundColor: MR_COLORS, borderWidth: 0 }] },
+    options: { cutout: "62%", plugins: { legend: { position: "bottom" } } } });
+</script>
 {% endblock %}

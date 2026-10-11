@@ -1,77 +1,120 @@
 {% extends "base.html" %}
+{% from "macros.html" import status, empty, avatar %}
 {% block title %}{{ person.full_name }}{% endblock %}
+{% block crumb %}Patients{% endblock %}
+{% block page_title %}{{ person.full_name }}{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
-    <div>
-        <h3>{{ person.full_name }}</h3>
-        <div class="text-muted small">
-            {{ person.gender }} &bull; {{ person.age }} yrs (DOB {{ person.dob }}) &bull; Blood Group {{ person.blood_group or '—' }} &bull; {{ person.phone or 'No phone' }}
+<div class="card-x mb-4">
+    <div class="card-body d-flex flex-wrap align-items-center gap-3">
+        {{ avatar(person.full_name, 'lg') }}
+        <div class="flex-grow-1">
+            <h2 class="h4 fw-bold mb-1">{{ person.full_name }}</h2>
+            <div class="d-flex flex-wrap gap-2">
+                <span class="badge-soft st-info">{{ person.age }} yrs (DOB {{ person.dob.strftime('%d %b %Y') }})</span>
+                <span class="badge-soft st-scheduled">{{ person.gender }}</span>
+                <span class="badge-soft st-inactive">Blood group {{ person.blood_group or '-' }}</span>
+                <span class="badge-soft st-cancelled"><i class="bi bi-telephone"></i> {{ person.phone or 'No phone' }}</span>
+                {% if person.emergency_contact %}<span class="badge-soft st-pending">Emergency {{ person.emergency_contact }}</span>{% endif %}
+            </div>
         </div>
-    </div>
-    <div class="d-flex gap-2">
-        <a href="{{ url_for('doctor.add_record', patient_id=person.patient_id) }}" class="btn btn-primary btn-sm"><i class="bi bi-file-earmark-plus"></i> Add Diagnosis</a>
-        <a href="{{ url_for('doctor.request_lab_test', patient_id=person.patient_id) }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-flask"></i> Request Lab Test</a>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('doctor.add_record', patient_id=person.patient_id) }}" class="btn btn-primary"><i class="bi bi-file-earmark-plus me-1"></i> Add Diagnosis</a>
+            <a href="{{ url_for('doctor.request_lab_test', patient_id=person.patient_id) }}" class="btn btn-soft"><i class="bi bi-droplet-half me-1"></i> Request Lab Test</a>
+        </div>
     </div>
 </div>
 
-<div class="row g-4">
-    <div class="col-md-7">
-        <div class="card mb-4">
-            <div class="card-header">Medical Records</div>
-            <div class="list-group list-group-flush">
-                {% for r in records %}
-                <div class="list-group-item">
-                    <div class="d-flex justify-content-between">
-                        <strong>{{ r.diagnosis }}</strong>
-                        <span class="small text-muted">{{ r.created_at.strftime('%d %b %Y') }}</span>
-                    </div>
-                    {% if r.prescription %}<div class="small">Rx: {{ r.prescription }}</div>{% endif %}
-                    {% if r.notes %}<div class="small text-muted">{{ r.notes }}</div>{% endif %}
+{% if vitals.latest %}
+<div class="row g-4 mb-4">
+    <div class="col-lg-4">
+        <div class="card-x h-100">
+            <div class="card-head"><h2><span class="icon-chip coral"><i class="bi bi-heart-pulse"></i></span>Latest vitals</h2><span class="small text-muted">{{ vitals.latest.created_at.strftime('%d %b %Y') }}</span></div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-6"><div class="vital"><div class="k">BP</div><div class="v">{{ vitals.latest.bp_systolic }}<span class="u">/{{ vitals.latest.bp_diastolic }}</span></div></div></div>
+                    <div class="col-6"><div class="vital"><div class="k">Pulse</div><div class="v">{{ vitals.latest.heart_rate }}<span class="u"> bpm</span></div></div></div>
+                    <div class="col-6"><div class="vital"><div class="k">Temp</div><div class="v">{{ vitals.latest.temperature_c }}<span class="u"> &deg;C</span></div></div></div>
+                    <div class="col-6"><div class="vital"><div class="k">Weight</div><div class="v">{{ vitals.latest.weight_kg }}<span class="u"> kg</span></div></div></div>
                 </div>
-                {% else %}
-                <div class="list-group-item text-muted">No records yet.</div>
-                {% endfor %}
             </div>
         </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card-x h-100">
+            <div class="card-head"><h2><span class="icon-chip"><i class="bi bi-graph-up"></i></span>Trend across visits</h2></div>
+            <div class="card-body"><div style="height:220px"><canvas id="vitalsChart"></canvas></div></div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
-        <div class="card">
-            <div class="card-header">Lab Tests</div>
-            <div class="table-responsive">
-                <table class="table mb-0 align-middle">
-                    <thead><tr><th>Test</th><th>Status</th><th>Result</th></tr></thead>
+<div class="card-x">
+    <div class="card-head">
+        <ul class="nav nav-pills gap-1" role="tablist">
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-records" type="button">Medical Records <span class="badge bg-secondary-subtle text-body ms-1">{{ records|length }}</span></button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-labs" type="button">Lab Tests <span class="badge bg-secondary-subtle text-body ms-1">{{ lab_tests|length }}</span></button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-appts" type="button">Appointment History <span class="badge bg-secondary-subtle text-body ms-1">{{ appointments|length }}</span></button></li>
+        </ul>
+    </div>
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="tab-records">
+            <div class="table-wrap" style="max-height:520px">
+                <table class="table-x">
+                    <thead><tr><th>Date</th><th>Diagnosis</th><th>Prescription</th><th>Vitals</th><th>Doctor</th></tr></thead>
+                    <tbody>
+                        {% for r in records %}
+                        <tr>
+                            <td class="text-nowrap">{{ r.created_at.strftime('%d %b %Y') }}</td>
+                            <td><div class="cell-main">{{ r.diagnosis }}</div>{% if r.notes %}<div class="cell-sub">{{ r.notes }}</div>{% endif %}</td>
+                            <td class="small">{{ r.prescription or '-' }}</td>
+                            <td class="small text-nowrap">{% if r.bp_systolic %}{{ r.bp_systolic }}/{{ r.bp_diastolic }}, {{ r.heart_rate }} bpm{% else %}-{% endif %}</td>
+                            <td class="small">{{ r.doctor_name }}<div class="cell-sub">{{ r.department }}</div></td>
+                        </tr>
+                        {% else %}<tr data-empty><td colspan="5">{{ empty('journal', 'No records yet.') }}</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="tab-pane fade" id="tab-labs">
+            <div class="table-wrap" style="max-height:520px">
+                <table class="table-x">
+                    <thead><tr><th>Test</th><th>Requested</th><th>Status</th><th>Result</th><th></th></tr></thead>
                     <tbody>
                         {% for t in lab_tests %}
                         <tr>
-                            <td>{{ t.test_name }}</td>
-                            <td><span class="badge status-{{ t.status|lower }}">{{ t.status }}</span></td>
-                            <td>{{ t.result_summary or '—' }}</td>
+                            <td class="cell-main">{{ t.test_name }}</td>
+                            <td>{{ t.requested_at.strftime('%d %b %Y') }}</td>
+                            <td>{{ status(t.status) }}</td>
+                            <td class="small">{{ t.result_summary or '-' }}</td>
+                            <td>{% if t.report_id and t.file_name %}<a href="{{ url_for('doctor.download_report', report_id=t.report_id) }}" class="btn btn-soft btn-sm"><i class="bi bi-download"></i></a>{% endif %}</td>
                         </tr>
-                        {% else %}
-                        <tr><td colspan="3" class="text-muted text-center py-3">No lab tests.</td></tr>
-                        {% endfor %}
+                        {% else %}<tr data-empty><td colspan="5">{{ empty('droplet-half', 'No lab tests.') }}</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="tab-pane fade" id="tab-appts">
+            <div class="table-wrap" style="max-height:520px">
+                <table class="table-x">
+                    <thead><tr><th>Date</th><th>Time</th><th>Doctor</th><th>Reason</th><th>Status</th></tr></thead>
+                    <tbody>
+                        {% for a in appointments %}
+                        <tr><td>{{ a.appointment_date.strftime('%d %b %Y') }}</td><td class="mono">{{ a.appointment_time.strftime('%H:%M') }}</td><td>{{ a.doctor_name }}</td><td class="small">{{ a.reason }}</td><td>{{ status(a.status) }}</td></tr>
+                        {% else %}<tr data-empty><td colspan="5">{{ empty('calendar-x', 'No appointments.') }}</td></tr>{% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
-
-    <div class="col-md-5">
-        <div class="card">
-            <div class="card-header">Appointment History</div>
-            <div class="list-group list-group-flush">
-                {% for a in appointments %}
-                <div class="list-group-item">
-                    <div class="d-flex justify-content-between">
-                        <span>{{ a.appointment_date }} {{ a.appointment_time }}</span>
-                        <span class="badge status-{{ a.status|lower }}">{{ a.status }}</span>
-                    </div>
-                    <div class="small text-muted">{{ a.reason }}</div>
-                </div>
-                {% else %}
-                <div class="list-group-item text-muted">No appointments.</div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+const v = {{ vitals|tojson }};
+if (v.labels.length) mrChart("vitalsChart", { type: "line", data: { labels: v.labels, datasets: [
+    { label: "Systolic", data: v.systolic, borderColor: "#14b8a6", backgroundColor: "rgba(20,184,166,.12)", fill: true, tension: .35 },
+    { label: "Diastolic", data: v.diastolic, borderColor: "#6366f1", tension: .35 },
+    { label: "Heart rate", data: v.heart_rate, borderColor: "#fb7185", borderDash: [5, 5], tension: .35 }] },
+    options: { interaction: { mode: "index", intersect: false }, plugins: { legend: { position: "bottom" } }, scales: { x: { grid: { display: false } } } } });
+</script>
 {% endblock %}

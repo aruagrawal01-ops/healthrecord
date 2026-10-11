@@ -1,62 +1,131 @@
 {% extends "base.html" %}
+{% from "macros.html" import stat, status, empty, avatar %}
 {% block title %}Admin Dashboard{% endblock %}
+{% block crumb %}Administration{% endblock %}
+{% block page_title %}Hospital Overview{% endblock %}
 {% block content %}
-<h3 class="mb-4">Hospital Overview</h3>
+<div class="hero mb-4">
+    <div class="row align-items-center g-3">
+        <div class="col-lg-7">
+            <div class="small fw-semibold opacity-75 mb-1">{{ today.strftime('%A, %d %B %Y') }}</div>
+            <h2>Hospital Overview</h2>
+            <p>{{ stats.todays_appointments }} appointments today, {{ kpi.next_week }} booked for the coming week, and {{ stats.pending_lab_tests }} lab tests in the queue.</p>
+        </div>
+        <div class="col-lg-5 d-flex flex-wrap gap-2 justify-content-lg-end">
+            <a href="{{ url_for('admin.reports') }}" class="btn btn-light"><i class="bi bi-bar-chart-line me-1"></i> Reports</a>
+            <a href="{{ url_for('admin.announcements') }}" class="btn btn-outline-light"><i class="bi bi-megaphone me-1"></i> Announce</a>
+            <a href="{{ url_for('admin.database') }}" class="btn btn-outline-light"><i class="bi bi-database me-1"></i> SQL</a>
+        </div>
+    </div>
+</div>
 
+<div class="row g-3 mb-3 stagger">
+    <div class="col-6 col-xl-3">{{ stat('people', 'g1', stats.total_patients, 'Patients') }}</div>
+    <div class="col-6 col-xl-3">{{ stat('heart-pulse', 'g3', stats.total_doctors, 'Doctors') }}</div>
+    <div class="col-6 col-xl-3">{{ stat('calendar-day', 'g4', stats.todays_appointments, "Today's Appointments") }}</div>
+    <div class="col-6 col-xl-3">{{ stat('hourglass-split', 'g2', stats.pending_lab_tests, 'Pending Lab Tests') }}</div>
+</div>
 <div class="row g-3 mb-4">
-    <div class="col-6 col-md-2-4 col-lg">
-        <div class="card stat-card border-primary"><div class="card-body">
-            <div class="text-muted small">Patients</div>
-            <div class="fs-2 fw-bold">{{ stats.total_patients }}</div>
-        </div></div>
+    {% for value, suffix, label, icon, chip, bar in [
+        (kpi.completion_rate or 0, '%', 'Completion rate (30 days)', 'check2-circle', '', kpi.completion_rate or 0),
+        (kpi.cancel_rate or 0, '%', 'Cancellation rate (30 days)', 'x-circle', 'coral', kpi.cancel_rate or 0),
+        (kpi.next_week, '', 'Booked next 7 days', 'calendar-week', 'violet', None),
+        (kpi.avg_turnaround or 0, ' h', 'Average lab turnaround', 'stopwatch', 'amber', None)] %}
+    <div class="col-6 col-xl-3">
+        <div class="card-x p-3 h-100">
+            <div class="d-flex align-items-center gap-2 mb-2"><span class="icon-chip {{ chip }}"><i class="bi bi-{{ icon }}"></i></span><span class="small fw-semibold text-muted">{{ label }}</span></div>
+            <div class="fs-3 fw-bold" data-count="{{ value }}" data-suffix="{{ suffix }}">{{ value }}{{ suffix }}</div>
+            {% if bar is not none %}<div class="bar mt-2"><span style="width:{{ bar }}%"></span></div>{% endif %}
+        </div>
     </div>
-    <div class="col-6 col-lg">
-        <div class="card stat-card border-success"><div class="card-body">
-            <div class="text-muted small">Doctors</div>
-            <div class="fs-2 fw-bold">{{ stats.total_doctors }}</div>
-        </div></div>
+    {% endfor %}
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="card-x h-100">
+            <div class="card-head"><h2><span class="icon-chip violet"><i class="bi bi-bar-chart"></i></span>Appointments by month</h2><a href="{{ url_for('admin.export', name='appointments') }}" class="btn btn-ghost btn-sm"><i class="bi bi-download"></i> CSV</a></div>
+            <div class="card-body"><div style="height:280px"><canvas id="monthlyChart"></canvas></div></div>
+        </div>
     </div>
-    <div class="col-6 col-lg">
-        <div class="card stat-card border-info"><div class="card-body">
-            <div class="text-muted small">Lab Assistants</div>
-            <div class="fs-2 fw-bold">{{ stats.total_lab_assistants }}</div>
-        </div></div>
+    <div class="col-lg-4">
+        <div class="card-x h-100">
+            <div class="card-head"><h2><span class="icon-chip coral"><i class="bi bi-pie-chart"></i></span>Status split</h2></div>
+            <div class="card-body"><div style="height:280px"><canvas id="statusChart"></canvas></div></div>
+        </div>
     </div>
-    <div class="col-6 col-lg">
-        <div class="card stat-card border-warning"><div class="card-body">
-            <div class="text-muted small">Today's Appointments</div>
-            <div class="fs-2 fw-bold">{{ stats.todays_appointments }}</div>
-        </div></div>
+</div>
+<div class="row g-4 mb-4">
+    <div class="col-lg-7">
+        <div class="card-x h-100">
+            <div class="card-head"><h2><span class="icon-chip"><i class="bi bi-building"></i></span>Load by department</h2></div>
+            <div class="card-body"><div style="height:300px"><canvas id="deptChart"></canvas></div></div>
+        </div>
     </div>
-    <div class="col-6 col-lg">
-        <div class="card stat-card border-danger"><div class="card-body">
-            <div class="text-muted small">Pending Lab Tests</div>
-            <div class="fs-2 fw-bold">{{ stats.pending_lab_tests }}</div>
-        </div></div>
+    <div class="col-lg-5">
+        <div class="card-x h-100">
+            <div class="card-head"><h2><span class="icon-chip sky"><i class="bi bi-people"></i></span>Patients by age</h2></div>
+            <div class="card-body"><div style="height:300px"><canvas id="ageChart"></canvas></div></div>
+        </div>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Recent Appointments</span>
-        <a href="{{ url_for('admin.appointments') }}" class="small">View all &rarr;</a>
+<div class="row g-4">
+    <div class="col-xl-5">
+        <div class="card-x h-100">
+            <div class="card-head"><h2><span class="icon-chip"><i class="bi bi-calendar-day"></i></span>Today across the hospital</h2><a href="{{ url_for('admin.appointments', **{'from': today, 'to': today}) }}" class="small fw-semibold">All today</a></div>
+            <div class="card-body">
+                {% for a in todays %}
+                <div class="d-flex align-items-center gap-2 {{ 'mb-3' if not loop.last }}">
+                    <span class="mono fw-bold" style="min-width:46px">{{ a.appointment_time.strftime('%H:%M') }}</span>
+                    <div class="flex-grow-1 min-w-0"><div class="fw-semibold text-truncate">{{ a.patient_name }}</div><div class="small text-muted text-truncate">{{ a.doctor_name }} &middot; {{ a.department }}</div></div>
+                    {{ status(a.status) }}
+                </div>
+                {% else %}{{ empty('calendar-x', 'No appointments today.') }}{% endfor %}
+            </div>
+        </div>
     </div>
-    <div class="table-responsive">
-        <table class="table mb-0 align-middle">
-            <thead><tr><th>Patient</th><th>Doctor</th><th>Date</th><th>Status</th></tr></thead>
-            <tbody>
-                {% for a in recent %}
-                <tr>
-                    <td>{{ a.patient_name }}</td>
-                    <td>{{ a.doctor_name }}</td>
-                    <td>{{ a.appointment_date }}</td>
-                    <td><span class="badge status-{{ a.status|lower }}">{{ a.status }}</span></td>
-                </tr>
-                {% else %}
-                <tr><td colspan="4" class="text-muted text-center py-3">No appointments yet.</td></tr>
+    <div class="col-xl-4">
+        <div class="card-x h-100">
+            <div class="card-head"><h2><span class="icon-chip amber"><i class="bi bi-trophy"></i></span>Top doctors</h2><a href="{{ url_for('admin.reports') }}" class="small fw-semibold">Full report</a></div>
+            <div class="card-body">
+                {% set best = (top_doctors[0].completed if top_doctors else 1) or 1 %}
+                {% for d in top_doctors %}
+                <div class="{{ 'mb-3' if not loop.last }}">
+                    <div class="d-flex align-items-center gap-2 mb-1">{{ avatar(d.doctor_name, 'sm') }}<div class="flex-grow-1 min-w-0"><div class="fw-semibold text-truncate small">{{ d.doctor_name }}</div><div class="cell-sub">{{ d.department }}</div></div><span class="fw-bold">{{ d.completed }}</span></div>
+                    <div class="bar"><span style="width:{{ (100 * d.completed / best)|round }}%"></span></div>
+                </div>
                 {% endfor %}
-            </tbody>
-        </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3">
+        <div class="card-x h-100">
+            <div class="card-head"><h2><span class="icon-chip violet"><i class="bi bi-shield-check"></i></span>Audit trail</h2><a href="{{ url_for('admin.audit_log') }}" class="small fw-semibold">View</a></div>
+            <div class="card-body">
+                <div class="timeline">
+                    {% for r in audit %}
+                    <div class="tl-item {{ 'coral' if r.operation == 'DELETE' else ('amber' if r.operation == 'UPDATE' else '') }}"><div class="tl-time">{{ r.operation }} &middot; #{{ r.record_id }}</div><div class="small">{{ r.details }}</div></div>
+                    {% else %}{{ empty('shield', 'No changes yet.') }}{% endfor %}
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+const monthly = {{ monthly|tojson }}, statusSplit = {{ status_split|tojson }}, depts = {{ depts|tojson }}, ages = {{ ages|tojson }};
+mrChart("monthlyChart", { type: "bar", data: { labels: monthly.labels, datasets: [
+    { label: "Completed", data: monthly.completed, backgroundColor: "#14b8a6", borderRadius: 6 },
+    { label: "Scheduled", data: monthly.scheduled, backgroundColor: "#6366f1", borderRadius: 6 },
+    { label: "Cancelled", data: monthly.cancelled, backgroundColor: "#fb7185", borderRadius: 6 }] },
+    options: { plugins: { legend: { position: "bottom" } }, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true } } } });
+mrChart("statusChart", { type: "doughnut", data: { labels: statusSplit.labels, datasets: [{ data: statusSplit.n, backgroundColor: ["#14b8a6", "#fb7185", "#6366f1"], borderWidth: 0 }] },
+    options: { cutout: "68%", plugins: { legend: { position: "bottom" } } } });
+mrChart("deptChart", { type: "bar", data: { labels: depts.labels, datasets: [{ label: "Appointments", data: depts.appointments, backgroundColor: MR_COLORS, borderRadius: 8 }] },
+    options: { indexAxis: "y", plugins: { legend: { display: false } }, scales: { y: { grid: { display: false } } } } });
+mrChart("ageChart", { type: "bar", data: { labels: ages.labels, datasets: [{ label: "Patients", data: ages.n, backgroundColor: "rgba(99,102,241,.85)", borderRadius: 8 }] },
+    options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { ticks: { precision: 0 } } } } });
+</script>
 {% endblock %}

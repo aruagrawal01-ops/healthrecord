@@ -1,25 +1,41 @@
 {% extends "base.html" %}
+{% from "macros.html" import empty %}
 {% block title %}Audit Log{% endblock %}
+{% block crumb %}Administration{% endblock %}
+{% block page_title %}Audit Log{% endblock %}
 {% block content %}
-<h3 class="mb-1"><i class="bi bi-journal-text"></i> Audit Log</h3>
-<p class="text-muted small mb-4">Written automatically by the <code>trg_medical_record_audit</code> trigger on every insert, update or delete of a medical record.</p>
-<div class="card">
-    <div class="table-responsive">
-        <table class="table table-hover mb-0 align-middle">
-            <thead><tr><th>#</th><th>When</th><th>Table</th><th>Operation</th><th>Record</th><th>Details</th></tr></thead>
+<div class="notice mb-4"><div class="icon-chip violet"><i class="bi bi-shield-check"></i></div><div class="small">Written automatically by the <span class="mono">trg_medical_record_audit</span> trigger on every insert, update or delete of a medical record. The application never writes here directly.</div></div>
+<div class="card-x mb-4">
+    <div class="card-body">
+        <form class="filter-bar" method="GET">
+            <div class="d-flex gap-2 align-self-center">
+                {% for op in ['', 'INSERT', 'UPDATE', 'DELETE'] %}
+                <a href="{{ url_for('admin.audit_log', operation=op, q=filters.get('q', '')) }}" class="chip {{ 'active' if filters.get('operation', '') == op }}">{{ op or 'All' }} {% if op %}<span class="opacity-75">{{ totals.get(op, 0) }}</span>{% endif %}</a>
+                {% endfor %}
+            </div>
+            <input type="hidden" name="operation" value="{{ filters.get('operation', '') }}">
+            <div class="flex-grow-1"><div class="input-icon"><i class="bi bi-search"></i><input name="q" class="form-control" value="{{ filters.get('q', '') }}" placeholder="Search details, e.g. hypertension"></div></div>
+            <button class="btn btn-primary">Search</button>
+            <a href="{{ url_for('admin.export', name='audit-log') }}" class="btn btn-soft"><i class="bi bi-download"></i> CSV</a>
+        </form>
+    </div>
+</div>
+<div class="card-x">
+    <div class="card-head"><h2><span class="icon-chip"><i class="bi bi-journal-text"></i></span>Latest {{ rows|length }} entries</h2></div>
+    <div class="table-wrap">
+        <table class="table-x">
+            <thead><tr><th data-sort="num">#</th><th data-sort>When</th><th>Table</th><th data-sort>Operation</th><th data-sort="num">Record</th><th>Details</th></tr></thead>
             <tbody>
                 {% for r in rows %}
                 <tr>
                     <td>{{ r.log_id }}</td>
-                    <td>{{ r.changed_at.strftime('%d %b %Y %H:%M') }}</td>
-                    <td>{{ r.table_name }}</td>
-                    <td><span class="badge bg-{{ 'success' if r.operation == 'INSERT' else 'warning' if r.operation == 'UPDATE' else 'danger' }}">{{ r.operation }}</span></td>
+                    <td data-value="{{ r.changed_at }}" class="text-nowrap">{{ r.changed_at.strftime('%d %b %Y %H:%M') }}</td>
+                    <td class="mono">{{ r.table_name }}</td>
+                    <td><span class="badge-soft {{ 'st-completed' if r.operation == 'INSERT' else ('st-pending' if r.operation == 'UPDATE' else 'st-inactive') }}">{{ r.operation }}</span></td>
                     <td>{{ r.record_id }}</td>
-                    <td>{{ r.details }}</td>
+                    <td class="small">{{ r.details }}</td>
                 </tr>
-                {% else %}
-                <tr><td colspan="6" class="text-muted text-center py-3">No changes logged yet.</td></tr>
-                {% endfor %}
+                {% else %}<tr data-empty><td colspan="6">{{ empty('shield', 'No changes logged yet.') }}</td></tr>{% endfor %}
             </tbody>
         </table>
     </div>

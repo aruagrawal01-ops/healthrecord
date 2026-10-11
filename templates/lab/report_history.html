@@ -1,27 +1,27 @@
 {% extends "base.html" %}
+{% from "macros.html" import empty %}
 {% block title %}Upload History{% endblock %}
+{% block page_title %}My Upload History{% endblock %}
 {% block content %}
-<h3 class="mb-4"><i class="bi bi-clock-history"></i> My Upload History</h3>
-<div class="card">
-    <div class="table-responsive">
-        <table class="table table-hover mb-0 align-middle">
-            <thead><tr><th>Patient</th><th>Test</th><th>Result</th><th>Uploaded</th><th></th></tr></thead>
+<div class="card-x">
+    <div class="card-head flex-wrap">
+        <h2><span class="icon-chip"><i class="bi bi-clock-history"></i></span>{{ reports|length }} reports</h2>
+        <div class="input-icon" style="min-width:260px"><i class="bi bi-search"></i><input class="form-control form-control-sm" data-table-filter="#histTable" placeholder="Search patient, test or result"></div>
+    </div>
+    <div class="table-wrap">
+        <table class="table-x" id="histTable">
+            <thead><tr><th data-sort>Patient</th><th data-sort>Test</th><th>Result</th><th data-sort="num">Turnaround</th><th data-sort>Uploaded</th><th></th></tr></thead>
             <tbody>
                 {% for r in reports %}
                 <tr>
-                    <td>{{ r.patient_name }}</td>
+                    <td class="cell-main">{{ r.patient_name }}</td>
                     <td>{{ r.test_name }}</td>
-                    <td>{{ r.result_summary }}</td>
-                    <td>{{ r.uploaded_at.strftime('%d %b %Y %H:%M') }}</td>
-                    <td>
-                        {% if r.file_name %}
-                        <a href="{{ url_for('lab.download_report', report_id=r.report_id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-download"></i></a>
-                        {% endif %}
-                    </td>
+                    <td class="small">{{ r.result_summary }}</td>
+                    <td data-value="{{ r.hours }}"><span class="badge-soft {{ 'st-completed' if r.hours <= 24 else 'st-pending' }}">{{ r.hours|int }} h</span></td>
+                    <td data-value="{{ r.uploaded_at }}">{{ r.uploaded_at.strftime('%d %b %Y %H:%M') }}</td>
+                    <td>{% if r.file_name %}<a href="{{ url_for('lab.download_report', report_id=r.report_id) }}" class="btn btn-soft btn-sm" aria-label="Download"><i class="bi bi-download"></i></a>{% endif %}</td>
                 </tr>
-                {% else %}
-                <tr><td colspan="5" class="text-muted text-center py-3">No uploads yet.</td></tr>
-                {% endfor %}
+                {% else %}<tr data-empty><td colspan="6">{{ empty('cloud', 'No uploads yet.') }}</td></tr>{% endfor %}
             </tbody>
         </table>
     </div>

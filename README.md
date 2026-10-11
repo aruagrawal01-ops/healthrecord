@@ -11,27 +11,32 @@ A DBMS mini-project: a hospital application with **four login roles** —
 
 | Role | Capabilities |
 |---|---|
-| **Patient** | Register/login, book & cancel appointments, view medical records (diagnosis/prescription), view & download lab reports, edit contact profile |
-| **Doctor** | View today's appointments, look up any patient, add diagnosis + prescription, request lab tests, view lab results |
-| **Lab Assistant** | View the pending lab-test queue, upload results (text summary + optional PDF/image), view own upload history |
-| **Admin** | Create/deactivate Doctor and Lab Assistant accounts, manage Departments, view all Patients/Appointments, dashboard stats |
+| **Patient** | Register/login; book with a **live slot picker** (free/booked slots from `fn_free_slots`); **reschedule** atomically; cancel; health-trend charts of BP, pulse and weight; record timeline with search and department filters; **printable visit summaries**; lab reports with download; profile |
+| **Doctor** | Dashboard with today's clinic timeline and weekly activity charts; **weekly calendar**; filterable appointments; patient list and hospital-wide search; patient view with vitals charts; diagnosis + prescription + **vitals** (via `sp_complete_visit`); lab requests with common-test picker |
+| **Lab Assistant** | Dashboard with turnaround and workload charts; pending queue colour-coded by age with filters; file upload (stored as BYTEA); searchable upload history with turnaround times |
+| **Admin** | Analytics dashboard (KPIs, monthly trend, department load, demographics); **Reports & Analytics** with CSV exports; filterable appointment management; patient/doctor/lab-staff management (edit, activate/deactivate, **reset password**); departments (add, rename, delete); **announcements** to any role; audit log with filters; **Database Explorer** with table browser and a **read-only SQL console** |
+| **Everyone** | Light/dark theme, responsive sidebar layout, toast notifications, sortable/searchable tables, change password |
+
+**Sample data:** 80 patients, 20 doctors across 10 clinical departments, 4 lab staff, about 2,200 appointments over six months (plus three weeks ahead), 1,700+ medical records with vitals, 880+ lab tests. Generated deterministically by `bulk_demo_data.sql`, dated relative to the day it runs.
+
+**Demo logins:** `admin`/`admin123`, `drmehta`/`doctor123` (any `dr...` doctor uses `doctor123`), `labtech`/`lab123`, `rahul`/`patient123` (any generated patient, e.g. `ananya.iyer`, uses `patient123`).
 
 ## 2. DBMS concepts demonstrated
 
 - **Normalized schema (BCNF)** — see [`database/schema.sql`](database/schema.sql): `users` (auth) is separated from role-specific profile tables (`patients`, `doctors`, `lab_assistants`, `admins`), all linked by foreign keys.
 - **Constraints** — `PRIMARY KEY`, `FOREIGN KEY` with `ON DELETE CASCADE`/`SET NULL`, `CHECK`, `UNIQUE`, `NOT NULL`.
 - **Trigger** — inserting a `lab_reports` row automatically flips the linked `lab_tests.status` to `Completed` (`trg_lab_report_insert`).
-- **Views** — `view_patient_history`, `view_doctor_schedule`, `view_pending_lab_tests`, `view_admin_stats` (multi-table joins used directly by the app and report).
-- **Stored procedures & functions** — `sp_book_appointment` (past-date, inactive-doctor and slot-clash validation), `sp_complete_visit` (atomic visit completion), `fn_patient_age`, `fn_doctor_load`: see [`database/advanced_features.sql`](database/advanced_features.sql). A second trigger, `trg_medical_record_audit`, logs every medical-record change to `audit_log`.
+- **Views** — `view_patient_history`, `view_doctor_schedule`, `view_pending_lab_tests`, `view_admin_stats`, `view_doctor_performance`, `view_department_stats` (multi-table joins and `FILTER` aggregates used directly by the dashboards and reports).
+- **Stored procedures & functions** — `sp_book_appointment` (past date, Sunday, clinic hours, inactive doctor and slot-clash validation), `sp_complete_visit` (atomic visit completion with vitals), `sp_reschedule_appointment` (cancel + rebook in one transaction), `fn_patient_age`, `fn_doctor_load`, `fn_free_slots` (set-returning): see [`database/advanced_features.sql`](database/advanced_features.sql). A second trigger, `trg_medical_record_audit`, logs every medical-record change to `audit_log`.
 - **Transactions** — COMMIT, ROLLBACK, SAVEPOINT and automatic rollback demos with ACID notes: [`database/transactions.sql`](database/transactions.sql).
 - **Queries** — joins, aggregates, subqueries, indexes: see [`database/queries.sql`](database/queries.sql) for a ready-to-run demo set for your project report / viva.
 - **BLOB storage** — lab report files are stored as `BYTEA` directly in Postgres (not on disk), so the app has zero filesystem dependency — required for serverless hosting.
 
 ## 3. Tech stack
 
-- **Backend:** Flask 3, plain `psycopg2` (raw parameterized SQL — no ORM, so every query is visible)
+- **Backend:** Flask 3, `pg8000` (pure-Python driver; raw parameterized SQL — no ORM, so every query is visible)
 - **Auth:** `werkzeug.security` password hashing (scrypt), Flask sessions, role-based route decorators
-- **Frontend:** Jinja2 templates + Bootstrap 5 (CDN)
+- **Frontend:** Jinja2 templates, Bootstrap 5, Chart.js and a custom design system (`static/css/style.css`, `static/js/app.js`)
 - **Database:** PostgreSQL (Neon for the hosted deployment)
 - **Hosting:** Vercel (serverless Python)
 
@@ -40,25 +45,25 @@ A DBMS mini-project: a hospital application with **four login roles** —
 ```
 dbs prject/
 ├── app.py                 # Flask app factory, blueprint registration
-├── auth.py                 # Login/Register/Logout + role_required decorator
-├── db.py                   # psycopg2 connection helper
+├── auth.py                 # Login/Register/Logout/Change password + role_required decorator
+├── db.py                   # pg8000 connection helper (IST session, rollback on error)
 ├── config.py                # Reads SECRET_KEY / DATABASE_URL from env
 ├── patient_routes.py        # /patient/*
 ├── doctor_routes.py         # /doctor/*
 ├── lab_routes.py            # /lab/*
-├── admin_routes.py          # /admin/*
+├── admin_routes.py          # /admin/* (dashboard, reports, CSV, database explorer)
+├── test_app.py              # End-to-end checks (CRUD, edge cases, transactions)
 ├── database/
 │   ├── schema.sql           # DDL: tables, constraints, indexes, trigger, views
 │   ├── advanced_features.sql # Procedures, functions, audit trigger
 │   ├── seed_data.sql        # Demo accounts + sample records
-│   ├── bulk_demo_data.sql   # 14 patients, 6 doctors, 48 appointments, ...
+│   ├── bulk_demo_data.sql   # 80 patients, 20 doctors, ~2,200 appointments, vitals, labs
 │   ├── queries.sql          # Demo SQL for the project report
 │   └── transactions.sql     # COMMIT / ROLLBACK / SAVEPOINT demo
 ├── templates/                # Jinja2 HTML (per role)
-├── static/css/style.css
-├── api/index.py              # Vercel serverless entrypoint
-├── vercel.json
-└── requirements.txt
+├── static/css/style.css     # Design system (light + dark)
+├── static/js/app.js         # Slot picker, charts, table tools, toasts, theme
+└── requirements.txt          # Vercel detects app.py as the Flask entrypoint
 ```
 
 ---
@@ -146,7 +151,7 @@ git push -u origin main
 2. In **Environment Variables**, add:
    - `DATABASE_URL` = the Neon connection string from step 6.1
    - `SECRET_KEY` = any random string
-3. Click **Deploy**. Vercel auto-detects the Python app via `vercel.json` + `api/index.py`.
+3. Click **Deploy**. Vercel auto-detects the Flask app from `app.py`.
 4. Once done, you'll get a public URL like `https://your-project.vercel.app`.
 
 That's it — the same app, publicly reachable, backed by Neon Postgres.
@@ -165,4 +170,4 @@ DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@localhost:5432/health_records_
 
 - Run the queries in `database/queries.sql` in pgAdmin4 against your database to screenshot joins, aggregates, subqueries, and the trigger in action — useful evidence for the DBMS report/viva.
 - The ER diagram maps directly to `database/schema.sql`: `users` 1—1 with each of `patients`/`doctors`/`lab_assistants`/`admins`; `patients` 1—N `appointments` N—1 `doctors`; `appointments`/`patients`/`doctors` 1—N `medical_records`; `patients`/`doctors` 1—N `lab_tests` 1—1 `lab_reports`; `departments` 1—N `doctors`.
-- Password hashing (scrypt via Werkzeug) and parameterized SQL throughout (`psycopg2` with `%s` placeholders) are worth calling out if the evaluator asks about security.
+- Password hashing (scrypt via Werkzeug) and parameterized SQL throughout (`pg8000` with `%s` placeholders) are worth calling out if the evaluator asks about security.

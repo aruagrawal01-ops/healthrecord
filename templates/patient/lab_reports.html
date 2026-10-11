@@ -1,30 +1,33 @@
 {% extends "base.html" %}
+{% from "macros.html" import status, empty %}
 {% block title %}Lab Reports{% endblock %}
+{% block page_title %}Lab Reports{% endblock %}
 {% block content %}
-<h3 class="mb-4"><i class="bi bi-flask"></i> Lab Reports</h3>
-
-<div class="card">
-    <div class="table-responsive">
-        <table class="table table-hover mb-0 align-middle">
-            <thead><tr><th>Test</th><th>Requested By</th><th>Status</th><th>Result</th><th></th></tr></thead>
+{% set ready = tests|selectattr('status', 'equalto', 'Completed')|list %}
+<div class="row g-3 mb-4 stagger">
+    <div class="col-md-4"><div class="card-x stat"><div class="bubble g1"><i class="bi bi-clipboard2-pulse"></i></div><div><div class="value" data-count="{{ tests|length }}">{{ tests|length }}</div><div class="label">Tests ordered</div></div></div></div>
+    <div class="col-md-4"><div class="card-x stat"><div class="bubble g3"><i class="bi bi-check2-circle"></i></div><div><div class="value" data-count="{{ ready|length }}">{{ ready|length }}</div><div class="label">Results ready</div></div></div></div>
+    <div class="col-md-4"><div class="card-x stat"><div class="bubble g2"><i class="bi bi-hourglass-split"></i></div><div><div class="value" data-count="{{ tests|length - ready|length }}">{{ tests|length - ready|length }}</div><div class="label">Waiting for the lab</div></div></div></div>
+</div>
+<div class="card-x">
+    <div class="card-head flex-wrap">
+        <h2><span class="icon-chip amber"><i class="bi bi-droplet-half"></i></span>All tests</h2>
+        <div class="input-icon" style="min-width:240px"><i class="bi bi-search"></i><input class="form-control form-control-sm" data-table-filter="#labTable" placeholder="Search tests or results"></div>
+    </div>
+    <div class="table-wrap">
+        <table class="table-x" id="labTable">
+            <thead><tr><th data-sort>Test</th><th data-sort>Requested</th><th>Requested by</th><th data-sort>Status</th><th>Result</th><th></th></tr></thead>
             <tbody>
                 {% for t in tests %}
                 <tr>
-                    <td>{{ t.test_name }}</td>
+                    <td class="cell-main">{{ t.test_name }}</td>
+                    <td data-value="{{ t.requested_at }}">{{ t.requested_at.strftime('%d %b %Y') }}</td>
                     <td>{{ t.requested_by }}</td>
-                    <td><span class="badge status-{{ t.status|lower }}">{{ t.status }}</span></td>
-                    <td>{{ t.result_summary or '—' }}</td>
-                    <td>
-                        {% if t.report_id and t.file_name %}
-                        <a href="{{ url_for('patient.download_report', report_id=t.report_id) }}" class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-download"></i> {{ t.file_name }}
-                        </a>
-                        {% endif %}
-                    </td>
+                    <td>{{ status(t.status) }}</td>
+                    <td class="small">{{ t.result_summary or '-' }}</td>
+                    <td>{% if t.report_id and t.file_name %}<a href="{{ url_for('patient.download_report', report_id=t.report_id) }}" class="btn btn-soft btn-sm"><i class="bi bi-download"></i> {{ t.file_name }}</a>{% endif %}</td>
                 </tr>
-                {% else %}
-                <tr><td colspan="5" class="text-muted text-center py-3">No lab tests on record.</td></tr>
-                {% endfor %}
+                {% else %}<tr data-empty><td colspan="6">{{ empty('droplet-half', 'No lab tests on record.') }}</td></tr>{% endfor %}
             </tbody>
         </table>
     </div>

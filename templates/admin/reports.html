@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% from "macros.html" import avatar %}
+{% block title %}Reports{% endblock %}
+{% block crumb %}Administration{% endblock %}
+{% block page_title %}Reports &amp; Analytics{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap gap-2 mb-4 no-print">
+    <span class="small text-muted fw-semibold me-1 align-self-center">Export CSV:</span>
+    {% for n, l in [('appointments', 'Appointments'), ('patients', 'Patients'), ('doctors', 'Doctor performance'), ('departments', 'Departments'), ('lab-tests', 'Lab tests'), ('audit-log', 'Audit log')] %}
+    <a href="{{ url_for('admin.export', name=n) }}" class="chip"><i class="bi bi-download"></i> {{ l }}</a>
+    {% endfor %}
+    <button class="btn btn-ghost btn-sm ms-auto" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+</div>
+
+<ul class="nav nav-pills gap-1 mb-4" role="tablist">
+    {% for id, label in [('overview', 'Overview'), ('doctors', 'Doctors'), ('departments', 'Departments'), ('lab', 'Laboratory'), ('people', 'Demographics')] %}
+    <li class="nav-item"><button class="nav-link {{ 'active' if loop.first }}" data-bs-toggle="pill" data-bs-target="#r-{{ id }}" type="button">{{ label }}</button></li>
+    {% endfor %}
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade show active" id="r-overview">
+        <div class="row g-4">
+            <div class="col-lg-7"><div class="card-x h-100"><div class="card-head"><h2>Appointments vs completed, by department</h2></div><div class="card-body"><div style="height:320px"><canvas id="deptChart"></canvas></div></div></div></div>
+            <div class="col-lg-5"><div class="card-x h-100"><div class="card-head"><h2>Top 10 diagnoses</h2></div><div class="card-body"><div style="height:320px"><canvas id="dxChart"></canvas></div></div></div></div>
+            <div class="col-lg-5"><div class="card-x h-100"><div class="card-head"><h2>Busiest weekdays</h2></div><div class="card-body"><div style="height:260px"><canvas id="weekdayChart"></canvas></div></div></div></div>
+            <div class="col-lg-7"><div class="card-x h-100"><div class="card-head"><h2>Demand by time slot</h2></div><div class="card-body"><div style="height:260px"><canvas id="hourChart"></canvas></div></div></div></div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="r-doctors">
+        <div class="card-x">
+            <div class="card-head flex-wrap"><h2>Doctor performance <span class="small text-muted fw-normal">(view_doctor_performance)</span></h2>
+                <div class="input-icon" style="min-width:220px"><i class="bi bi-search"></i><input class="form-control form-control-sm" data-table-filter="#docTable" placeholder="Filter doctors"></div></div>
+            <div class="table-wrap">
+                <table class="table-x" id="docTable">
+                    <thead><tr><th data-sort>Doctor</th><th data-sort>Department</th><th data-sort="num">Appointments</th><th data-sort="num">Completed</th><th data-sort="num">Cancelled</th><th data-sort="num">Upcoming</th><th data-sort="num">Patients</th><th data-sort="num">Completion</th></tr></thead>
+                    <tbody>
+                        {% for d in doctors %}
+                        <tr>
+                            <td><div class="d-flex align-items-center gap-2">{{ avatar(d.doctor_name, 'sm') }}<span class="cell-main">{{ d.doctor_name }}</span></div></td>
+                            <td>{{ d.department or '-' }}</td><td>{{ d.total_appointments }}</td><td>{{ d.completed }}</td><td>{{ d.cancelled }}</td><td>{{ d.upcoming }}</td><td>{{ d.patients_seen }}</td>
+                            <td data-value="{{ d.completion_rate or 0 }}" style="min-width:140px"><div class="d-flex align-items-center gap-2"><div class="bar flex-grow-1"><span style="width:{{ d.completion_rate or 0 }}%"></span></div><span class="small fw-bold">{{ d.completion_rate or 0 }}%</span></div></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="r-departments">
+        <div class="card-x">
+            <div class="card-head"><h2>Departments <span class="small text-muted fw-normal">(view_department_stats)</span></h2></div>
+            <div class="table-wrap">
+                <table class="table-x">
+                    <thead><tr><th data-sort>Department</th><th data-sort="num">Doctors</th><th data-sort="num">Appointments</th><th data-sort="num">Completed</th><th data-sort="num">Unique patients</th><th>Share of visits</th></tr></thead>
+                    <tbody>
+                        {% set total = departments|sum(attribute='appointments') or 1 %}
+                        {% for d in departments %}
+                        <tr><td class="cell-main">{{ d.department }}</td><td>{{ d.doctors }}</td><td>{{ d.appointments }}</td><td>{{ d.completed }}</td><td>{{ d.patients }}</td>
+                            <td style="min-width:160px"><div class="d-flex align-items-center gap-2"><div class="bar flex-grow-1"><span style="width:{{ (100 * d.appointments / total)|round(1) }}%"></span></div><span class="small fw-bold">{{ (100 * d.appointments / total)|round(1) }}%</span></div></td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="r-lab">
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card-x h-100">
+                    <div class="card-head"><h2>Tests and turnaround</h2></div>
+                    <div class="table-wrap">
+                        <table class="table-x">
+                            <thead><tr><th data-sort>Test</th><th data-sort="num">Ordered</th><th data-sort="num">Reported</th><th data-sort="num">Avg turnaround</th></tr></thead>
+                            <tbody>
+                                {% for t in lab %}
+                                <tr><td class="cell-main">{{ t.test_name }}</td><td>{{ t.ordered }}</td><td>{{ t.reported }}</td><td data-value="{{ t.avg_hours or 0 }}">{% if t.avg_hours %}<span class="badge-soft {{ 'st-completed' if t.avg_hours <= 24 else 'st-pending' }}">{{ t.avg_hours }} h</span>{% else %}-{% endif %}</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4"><div class="card-x h-100"><div class="card-head"><h2>Pending test ageing</h2></div><div class="card-body"><div style="height:300px"><canvas id="ageingChart"></canvas></div></div></div></div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="r-people">
+        <div class="row g-4">
+            <div class="col-lg-6"><div class="card-x h-100"><div class="card-head"><h2>Blood groups</h2></div><div class="card-body"><div style="height:300px"><canvas id="bloodChart"></canvas></div></div></div></div>
+            <div class="col-lg-6"><div class="card-x h-100"><div class="card-head"><h2>Gender</h2></div><div class="card-body"><div style="height:300px"><canvas id="genderChart"></canvas></div></div></div></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const D = {{ dept_chart|tojson }}, AG = {{ ageing|tojson }}, BL = {{ blood|tojson }}, GE = {{ gender|tojson }}, WD = {{ weekday|tojson }}, HR = {{ hours|tojson }};
+const DX = {{ {'labels': diagnoses|map(attribute='diagnosis')|list, 'n': diagnoses|map(attribute='n')|list}|tojson }};
+mrChart("deptChart", { type: "bar", data: { labels: D.labels, datasets: [
+    { label: "Appointments", data: D.appointments, backgroundColor: "rgba(99,102,241,.3)", borderRadius: 6 },
+    { label: "Completed", data: D.completed, backgroundColor: "#14b8a6", borderRadius: 6 }] },
+    options: { plugins: { legend: { position: "bottom" } }, scales: { x: { grid: { display: false } } } } });
+mrChart("dxChart", { type: "bar", data: { labels: DX.labels, datasets: [{ label: "Records", data: DX.n, backgroundColor: MR_COLORS, borderRadius: 6 }] },
+    options: { indexAxis: "y", plugins: { legend: { display: false } }, scales: { y: { grid: { display: false }, ticks: { font: { size: 11 } } } } } });
+mrChart("weekdayChart", { type: "bar", data: { labels: WD.labels, datasets: [{ label: "Visits", data: WD.n, backgroundColor: "#8b5cf6", borderRadius: 8 }] },
+    options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } } });
+mrChart("hourChart", { type: "line", data: { labels: HR.labels, datasets: [{ label: "Visits", data: HR.n, borderColor: "#14b8a6", backgroundColor: "rgba(20,184,166,.15)", fill: true, tension: .4 }] },
+    options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true } } } });
+mrChart("ageingChart", { type: "doughnut", data: { labels: AG.labels, datasets: [{ data: AG.n, backgroundColor: ["#22c55e", "#f59e0b", "#fb7185", "#ef4444"], borderWidth: 0 }] },
+    options: { cutout: "62%", plugins: { legend: { position: "bottom" } } } });
+mrChart("bloodChart", { type: "polarArea", data: { labels: BL.labels, datasets: [{ data: BL.n, backgroundColor: MR_COLORS.map((c) => c + "cc") }] },
+    options: { plugins: { legend: { position: "right" } } } });
+mrChart("genderChart", { type: "doughnut", data: { labels: GE.labels, datasets: [{ data: GE.n, backgroundColor: ["#fb7185", "#6366f1", "#14b8a6"], borderWidth: 0 }] },
+    options: { cutout: "62%", plugins: { legend: { position: "bottom" } } } });
+</script>
+{% endblock %}

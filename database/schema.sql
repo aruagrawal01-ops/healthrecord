@@ -5,6 +5,7 @@
 -- Run order: schema.sql -> advanced_features.sql -> seed_data.sql -> bulk_demo_data.sql
 -- ============================================================
 
+DROP TABLE IF EXISTS announcements CASCADE;
 DROP TABLE IF EXISTS audit_log CASCADE;
 DROP TABLE IF EXISTS lab_reports CASCADE;
 DROP TABLE IF EXISTS lab_tests CASCADE;
@@ -102,6 +103,12 @@ CREATE TABLE medical_records (
     diagnosis TEXT NOT NULL,
     prescription TEXT,
     notes TEXT,
+    -- Vitals taken at the visit (optional); ranges reject typos like 1200 bpm
+    bp_systolic SMALLINT CHECK (bp_systolic BETWEEN 60 AND 250),
+    bp_diastolic SMALLINT CHECK (bp_diastolic BETWEEN 30 AND 150),
+    heart_rate SMALLINT CHECK (heart_rate BETWEEN 30 AND 220),
+    temperature_c NUMERIC(4,1) CHECK (temperature_c BETWEEN 30 AND 45),
+    weight_kg NUMERIC(5,1) CHECK (weight_kg BETWEEN 1 AND 300),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -143,6 +150,7 @@ CREATE INDEX idx_appointments_doctor ON appointments(doctor_id);
 CREATE INDEX idx_records_patient ON medical_records(patient_id);
 CREATE INDEX idx_labtests_patient ON lab_tests(patient_id);
 CREATE INDEX idx_labtests_status ON lab_tests(status);
+CREATE INDEX idx_appointments_date ON appointments(appointment_date);
 
 -- Appointment clash rule: a doctor cannot have two live bookings in the
 -- same slot. Partial, so a Cancelled slot can be booked again.
@@ -160,6 +168,20 @@ CREATE TABLE audit_log (
     record_id INTEGER NOT NULL,
     details TEXT,
     changed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ------------------------------------------------------------
+-- Announcements: notices the admin posts to one role or everyone
+-- ------------------------------------------------------------
+CREATE TABLE announcements (
+    announcement_id SERIAL PRIMARY KEY,
+    title VARCHAR(150) NOT NULL,
+    body TEXT NOT NULL,
+    audience VARCHAR(20) NOT NULL DEFAULT 'all'
+        CHECK (audience IN ('all', 'patient', 'doctor', 'lab_assistant')),
+    is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
+    created_by INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ------------------------------------------------------------
@@ -237,3 +259,35 @@ SELECT
     (SELECT COUNT(*) FROM lab_assistants) AS total_lab_assistants,
     (SELECT COUNT(*) FROM appointments WHERE appointment_date = CURRENT_DATE) AS todays_appointments,
     (SELECT COUNT(*) FROM lab_tests WHERE status = 'Pending') AS pending_lab_tests;
+
+-- Per-doctor workload and outcomes (admin reports page)
+CREATE OR REPLACE VIEW view_doctor_performance AS
+SELECT
+    d.doctor_id,
+    d.full_name AS doctor_name,
+    dep.name AS department,
+    COUNT(a.appointment_id) AS total_appointments,
+    COUNT(*) FILTER (WHERE a.status = 'Completed') AS completed,
+    COUNT(*) FILTER (WHERE a.status = 'Cancelled') AS cancelled,
+    COUNT(*) FILTER (WHERE a.status = 'Scheduled') AS upcoming,
+    COUNT(DISTINCT a.patient_id) AS patients_seen,
+    ROUND(100.0 * COUNT(*) FILTER (WHERE a.status = 'Completed')
+          / NULLIF(COUNT(*) FILTER (WHERE a.status <> 'Scheduled'), 0), 1) AS completion_rate
+FROM doctors d
+LEFT JOIN departments dep ON d.department_id = dep.department_id
+LEFT JOIN appointments a ON a.doctor_id = d.doctor_id
+GROUP BY d.doctor_id, d.full_name, dep.name;
+
+-- Per-department totals (admin reports page)
+CREATE OR REPLACE VIEW view_department_stats AS
+SELECT
+    dep.department_id,
+    dep.name AS department,
+    COUNT(DISTINCT d.doctor_id) AS doctors,
+    COUNT(a.appointment_id) AS appointments,
+    COUNT(*) FILTER (WHERE a.status = 'Completed') AS completed,
+    COUNT(DISTINCT a.patient_id) AS patients
+FROM departments dep
+LEFT JOIN doctors d ON d.department_id = dep.department_id
+LEFT JOIN appointments a ON a.doctor_id = d.doctor_id
+GROUP BY dep.department_id, dep.name;

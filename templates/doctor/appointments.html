@@ -1,30 +1,48 @@
 {% extends "base.html" %}
+{% from "macros.html" import status, empty, avatar %}
 {% block title %}Appointments{% endblock %}
+{% block page_title %}Appointments{% endblock %}
 {% block content %}
-<h3 class="mb-4"><i class="bi bi-calendar-check"></i> All Appointments</h3>
-<div class="card">
-    <div class="table-responsive">
-        <table class="table table-hover mb-0 align-middle">
-            <thead><tr><th>Patient</th><th>Date</th><th>Time</th><th>Reason</th><th>Status</th><th></th></tr></thead>
+<div class="card-x mb-4">
+    <div class="card-body">
+        <form class="filter-bar" method="GET">
+            <div><label class="form-label">Period</label>
+                <select name="when" class="form-select" onchange="this.form.submit()">
+                    {% for v, l in [('upcoming', 'Upcoming'), ('past', 'Past'), ('all', 'All')] %}<option value="{{ v }}" {{ 'selected' if when == v }}>{{ l }}</option>{% endfor %}
+                </select></div>
+            <div><label class="form-label">Status</label>
+                <select name="status" class="form-select" onchange="this.form.submit()">
+                    <option value="">Any</option>{% for s in ['Scheduled', 'Completed', 'Cancelled'] %}<option {{ 'selected' if status == s }}>{{ s }}</option>{% endfor %}
+                </select></div>
+            <div class="flex-grow-1"><label class="form-label">Patient</label>
+                <div class="input-icon"><i class="bi bi-search"></i><input name="q" class="form-control" value="{{ q }}" placeholder="Search by name"></div></div>
+            <button class="btn btn-primary">Apply</button>
+        </form>
+    </div>
+</div>
+<div class="card-x">
+    <div class="card-head"><h2><span class="icon-chip"><i class="bi bi-calendar2-check"></i></span>All Appointments</h2><span class="small text-muted">{{ appointments|length }} result{{ '' if appointments|length == 1 else 's' }}{{ ' (first 300)' if appointments|length == 300 }}</span></div>
+    <div class="table-wrap">
+        <table class="table-x">
+            <thead><tr><th data-sort>Patient</th><th data-sort>Date</th><th>Time</th><th>Reason</th><th data-sort>Status</th><th></th></tr></thead>
             <tbody>
                 {% for a in appointments %}
                 <tr>
-                    <td><a href="{{ url_for('doctor.patient_detail', patient_id=a.patient_id) }}">{{ a.patient_name }}</a></td>
-                    <td>{{ a.appointment_date }}</td>
-                    <td>{{ a.appointment_time }}</td>
-                    <td>{{ a.reason }}</td>
-                    <td><span class="badge status-{{ a.status|lower }}">{{ a.status }}</span></td>
-                    <td>
+                    <td><a href="{{ url_for('doctor.patient_detail', patient_id=a.patient_id) }}" class="d-flex align-items-center gap-2 text-body">{{ avatar(a.patient_name, 'sm') }}<span class="cell-main">{{ a.patient_name }}</span></a></td>
+                    <td data-value="{{ a.appointment_date }}">{{ a.appointment_date.strftime('%a %d %b %Y') }}</td>
+                    <td class="mono">{{ a.appointment_time.strftime('%H:%M') }}</td>
+                    <td class="small">{{ a.reason }}</td>
+                    <td>{{ status(a.status) }}</td>
+                    <td class="text-end">
                         {% if a.status == 'Scheduled' %}
-                        <form method="POST" action="{{ url_for('doctor.complete_appointment', appointment_id=a.appointment_id) }}">
-                            <button class="btn btn-sm btn-outline-success">Mark Completed</button>
+                        <a href="{{ url_for('doctor.add_record', patient_id=a.patient_id, appointment_id=a.appointment_id) }}" class="btn btn-soft btn-sm">Record visit</a>
+                        <form method="POST" action="{{ url_for('doctor.complete_appointment', appointment_id=a.appointment_id) }}" class="d-inline">
+                            <button class="btn btn-ghost btn-sm">Mark Completed</button>
                         </form>
                         {% endif %}
                     </td>
                 </tr>
-                {% else %}
-                <tr><td colspan="6" class="text-muted text-center py-3">No appointments found.</td></tr>
-                {% endfor %}
+                {% else %}<tr data-empty><td colspan="6">{{ empty('calendar-x', 'No appointments match these filters.') }}</td></tr>{% endfor %}
             </tbody>
         </table>
     </div>

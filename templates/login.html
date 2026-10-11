@@ -1,47 +1,68 @@
 {% extends "base.html" %}
-{% block title %}Login{% endblock %}
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-5">
-        <div class="card auth-card">
-            <div class="card-body p-4">
-                <h3 class="text-center mb-4"><i class="bi bi-box-arrow-in-right"></i> Login</h3>
-                <form method="POST">
-                    <div class="mb-3">
-                        <label class="form-label">Login as</label>
-                        <select class="form-select" name="role" required>
-                            <option value="patient">Patient</option>
-                            <option value="doctor">Doctor</option>
-                            <option value="lab_assistant">Lab Assistant</option>
-                            <option value="admin">Admin</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Username</label>
-                        <input type="text" class="form-control" name="username" required autofocus>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Password</label>
-                        <input type="password" class="form-control" name="password" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">Login</button>
-                </form>
-                <p class="text-center mt-3 mb-0 small text-muted">
-                    New patient? <a href="{{ url_for('auth.register') }}">Register here</a>
-                </p>
+{% block title %}Log in{% endblock %}
+{% block public %}
+<div class="auth-wrap">
+    <div class="auth-art">
+        <a class="d-flex align-items-center gap-2 fw-bold fs-5 text-white" href="{{ url_for('auth.index') }}"><span class="brand-mark" style="background:rgba(255,255,255,.2)"><i class="bi bi-heart-pulse-fill"></i></span>MediRecord</a>
+        <div>
+            <h2 class="display-6 fw-bold mb-3">Care that remembers.</h2>
+            <p class="fs-5 opacity-75 mb-4">Appointments, diagnoses, vitals and lab results, connected for every patient.</p>
+            <div class="d-flex flex-column gap-2">
+                {% for icon, text in [('calendar2-check', 'Live, clash-free appointment slots'), ('graph-up', 'Health trends from every visit'), ('shield-lock', 'Role-based access and a full audit trail')] %}
+                <div class="d-flex align-items-center gap-2"><i class="bi bi-{{ icon }} fs-5"></i>{{ text }}</div>
+                {% endfor %}
             </div>
         </div>
-        <div class="card mt-3 demo-card">
-            <div class="card-body small">
-                <strong>Demo accounts</strong> (seed_data.sql)
-                <ul class="mb-0 mt-2">
-                    <li>Admin &mdash; <code>admin</code> / <code>admin123</code></li>
-                    <li>Doctor &mdash; <code>drmehta</code> / <code>doctor123</code></li>
-                    <li>Lab Assistant &mdash; <code>labtech</code> / <code>lab123</code></li>
-                    <li>Patient &mdash; <code>rahul</code> / <code>patient123</code></li>
-                </ul>
+        <div class="small opacity-75">DBMS Lab Project &middot; Arush Agrawal &amp; Tanmay Khare</div>
+    </div>
+    <div class="auth-form">
+        <div class="inner fade-up">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <a href="{{ url_for('auth.index') }}" class="text-muted small"><i class="bi bi-arrow-left"></i> Home</a>
+                <button class="btn btn-ghost btn-icon" data-theme-toggle aria-label="Toggle dark mode"><i data-theme-icon class="bi bi-moon-stars"></i></button>
+            </div>
+            <h1 class="h3 fw-bold">Welcome back</h1>
+            <p class="text-muted mb-4">Log in to your MediRecord account.</p>
+            <form method="POST" id="loginForm">
+                <label class="form-label">I am a</label>
+                <div class="role-tabs mb-3">
+                    {% for value, icon, label in [('patient', 'person-heart', 'Patient'), ('doctor', 'heart-pulse', 'Doctor'), ('lab_assistant', 'eyedropper', 'Lab'), ('admin', 'shield-lock', 'Admin')] %}
+                    <input type="radio" name="role" id="role-{{ value }}" value="{{ value }}" {{ 'checked' if loop.first }}>
+                    <label for="role-{{ value }}"><i class="bi bi-{{ icon }}"></i>{{ label }}</label>
+                    {% endfor %}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="username">Username</label>
+                    <div class="input-icon"><i class="bi bi-person"></i><input type="text" class="form-control" id="username" name="username" required autofocus autocomplete="username"></div>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label" for="password">Password</label>
+                    <div class="input-icon"><i class="bi bi-lock"></i><input type="password" class="form-control" id="password" name="password" required autocomplete="current-password"></div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 py-2">Log in</button>
+            </form>
+            <p class="text-center text-muted small mt-3">New patient? <a href="{{ url_for('auth.register') }}" class="fw-semibold">Create an account</a></p>
+
+            <div class="mt-4">
+                <div class="small fw-bold text-muted mb-2">Demo accounts: click to fill</div>
+                <div class="row g-2">
+                    {% for role, user, pw, label in [('admin', 'admin', 'admin123', 'Admin'), ('doctor', 'drmehta', 'doctor123', 'Dr. Mehta'), ('lab_assistant', 'labtech', 'lab123', 'Lab: Sunita'), ('patient', 'rahul', 'patient123', 'Patient: Rahul')] %}
+                    <div class="col-6"><div class="demo-pill" data-demo="{{ role }}|{{ user }}|{{ pw }}"><b>{{ label }}</b><div class="text-muted mono">{{ user }} / {{ pw }}</div></div></div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll("[data-demo]").forEach((el) => el.addEventListener("click", () => {
+    const [role, user, pw] = el.dataset.demo.split("|");
+    document.getElementById("role-" + role).checked = true;
+    document.getElementById("username").value = user;
+    document.getElementById("password").value = pw;
+    toast("Filled demo account: " + user + ". Press Log in.", "info");
+}));
+</script>
 {% endblock %}

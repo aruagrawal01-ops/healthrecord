@@ -54,7 +54,12 @@ def role_required(*roles):
 def index():
     if "user_id" in session:
         return redirect(url_for(ROLE_HOME[session["role"]]))
-    return render_template("index.html")
+    stats = query_one(
+        """SELECT (SELECT COUNT(*) FROM patients) AS patients, (SELECT COUNT(*) FROM doctors) AS doctors,
+                  (SELECT COUNT(*) FROM departments) AS departments,
+                  (SELECT COUNT(*) FROM appointments WHERE status = 'Completed') AS visits"""
+    )
+    return render_template("index.html", stats=stats)
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
@@ -146,6 +151,25 @@ def register():
         return redirect(url_for("auth.login"))
 
     return render_template("register.html")
+
+
+@auth_bp.route("/account/password", methods=["GET", "POST"])
+@login_required
+def change_password():
+    if request.method == "POST":
+        user = query_one("SELECT password_hash FROM users WHERE user_id = %s", (session["user_id"],))
+        new = request.form["new_password"]
+        if not check_password_hash(user["password_hash"], request.form["current_password"]):
+            flash("Your current password is incorrect.", "danger")
+        elif len(new) < 6:
+            flash("The new password must be at least 6 characters.", "danger")
+        elif new != request.form["confirm_password"]:
+            flash("The new passwords do not match.", "danger")
+        else:
+            execute("UPDATE users SET password_hash = %s WHERE user_id = %s", (generate_password_hash(new), session["user_id"]))
+            flash("Password updated.", "success")
+            return redirect(url_for(ROLE_HOME[session["role"]]))
+    return render_template("account_password.html")
 
 
 @auth_bp.route("/logout")

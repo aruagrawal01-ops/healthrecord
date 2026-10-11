@@ -1,65 +1,41 @@
 {% extends "base.html" %}
 {% block title %}Register{% endblock %}
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-7">
-        <div class="card auth-card">
-            <div class="card-body p-4">
-                <h3 class="text-center mb-4"><i class="bi bi-person-plus-fill"></i> Patient Registration</h3>
-                <p class="text-muted small text-center">Doctor, Lab Assistant and Admin accounts are created by the hospital Admin.</p>
-                <form method="POST">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Full Name</label>
-                            <input type="text" class="form-control" name="full_name" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Username</label>
-                            <input type="text" class="form-control" name="username" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Email</label>
-                            <input type="email" class="form-control" name="email" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Password</label>
-                            <input type="password" class="form-control" name="password" minlength="6" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Date of Birth</label>
-                            <input type="date" class="form-control" name="dob" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Gender</label>
-                            <select class="form-select" name="gender" required>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Blood Group</label>
-                            <input type="text" class="form-control" name="blood_group" placeholder="e.g. O+">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Phone</label>
-                            <input type="tel" class="form-control" name="phone">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Emergency Contact</label>
-                            <input type="tel" class="form-control" name="emergency_contact">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Address</label>
-                            <textarea class="form-control" name="address" rows="2"></textarea>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100 mt-4">Create Account</button>
-                </form>
-                <p class="text-center mt-3 mb-0 small text-muted">
-                    Already have an account? <a href="{{ url_for('auth.login') }}">Login</a>
-                </p>
+{% block public %}
+<div class="auth-wrap">
+    <div class="auth-art">
+        <a class="d-flex align-items-center gap-2 fw-bold fs-5 text-white" href="{{ url_for('auth.index') }}"><span class="brand-mark" style="background:rgba(255,255,255,.2)"><i class="bi bi-heart-pulse-fill"></i></span>MediRecord</a>
+        <div>
+            <h2 class="display-6 fw-bold mb-3">Your health, organised.</h2>
+            <p class="fs-5 opacity-75">Create a patient account to book appointments, see your prescriptions and download lab reports.</p>
+        </div>
+        <div class="small opacity-75">Doctor, lab and admin accounts are created by the hospital administrator.</div>
+    </div>
+    <div class="auth-form">
+        <div class="inner fade-up" style="max-width:560px">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <a href="{{ url_for('auth.index') }}" class="text-muted small"><i class="bi bi-arrow-left"></i> Home</a>
+                <button class="btn btn-ghost btn-icon" data-theme-toggle aria-label="Toggle dark mode"><i data-theme-icon class="bi bi-moon-stars"></i></button>
             </div>
+            <h1 class="h3 fw-bold">Create your patient account</h1>
+            <p class="text-muted mb-4">It takes less than a minute.</p>
+            <form method="POST">
+                <div class="row g-3">
+                    <div class="col-md-6"><label class="form-label" for="full_name">Full name</label><input class="form-control" id="full_name" name="full_name" required></div>
+                    <div class="col-md-6"><label class="form-label" for="username">Username</label><input class="form-control" id="username" name="username" required autocomplete="username"></div>
+                    <div class="col-md-6"><label class="form-label" for="email">Email</label><input type="email" class="form-control" id="email" name="email" required></div>
+                    <div class="col-md-6"><label class="form-label" for="password">Password</label><input type="password" class="form-control" id="password" name="password" minlength="6" required autocomplete="new-password"></div>
+                    <div class="col-md-4"><label class="form-label" for="dob">Date of birth</label><input type="date" class="form-control" id="dob" name="dob" required></div>
+                    <div class="col-md-4"><label class="form-label" for="gender">Gender</label>
+                        <select class="form-select" id="gender" name="gender" required><option>Male</option><option>Female</option><option>Other</option></select></div>
+                    <div class="col-md-4"><label class="form-label" for="blood_group">Blood group</label>
+                        <select class="form-select" id="blood_group" name="blood_group"><option value="">Not sure</option>{% for b in ['A+','A-','B+','B-','AB+','AB-','O+','O-'] %}<option>{{ b }}</option>{% endfor %}</select></div>
+                    <div class="col-md-6"><label class="form-label" for="phone">Phone</label><input type="tel" class="form-control" id="phone" name="phone" pattern="[0-9+ ]{7,15}"></div>
+                    <div class="col-md-6"><label class="form-label" for="emergency_contact">Emergency contact</label><input type="tel" class="form-control" id="emergency_contact" name="emergency_contact" pattern="[0-9+ ]{7,15}"></div>
+                    <div class="col-12"><label class="form-label" for="address">Address</label><textarea class="form-control" id="address" name="address" rows="2"></textarea></div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 py-2 mt-4">Create account</button>
+            </form>
+            <p class="text-center text-muted small mt-3">Already registered? <a href="{{ url_for('auth.login') }}" class="fw-semibold">Log in</a></p>
         </div>
     </div>
 </div>

@@ -1,65 +1,51 @@
 {% extends "base.html" %}
-{% block title %}Lab Assistants{% endblock %}
+{% from "macros.html" import status, empty, avatar %}
+{% block title %}Lab Staff{% endblock %}
+{% block crumb %}Administration{% endblock %}
+{% block page_title %}Manage Lab Assistants{% endblock %}
 {% block content %}
-<h3 class="mb-4"><i class="bi bi-flask"></i> Manage Lab Assistants</h3>
-
-<div class="row g-4">
-    <div class="col-md-5">
-        <div class="card">
-            <div class="card-header">Add New Lab Assistant</div>
+<div class="d-flex justify-content-end mb-4"><button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addLab"><i class="bi bi-plus-lg me-1"></i> Add lab assistant</button></div>
+<div class="row g-3 stagger">
+    {% for l in lab_assistants %}
+    <div class="col-md-6 col-xl-3">
+        <div class="card-x lift h-100">
             <div class="card-body">
-                <form method="POST">
-                    <div class="mb-2">
-                        <label class="form-label">Full Name</label>
-                        <input type="text" class="form-control" name="full_name" required>
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Username</label>
-                        <input type="text" class="form-control" name="username" required>
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Email</label>
-                        <input type="email" class="form-control" name="email" required>
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Password</label>
-                        <input type="password" class="form-control" name="password" minlength="6" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Phone</label>
-                        <input type="tel" class="form-control" name="phone">
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">Create Lab Assistant Account</button>
-                </form>
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    {{ avatar(l.full_name) }}
+                    <div class="min-w-0 flex-grow-1"><div class="cell-main text-truncate">{{ l.full_name }}</div><div class="cell-sub">@{{ l.username }}</div></div>
+                    {% if l.is_active %}{{ status('Active') }}{% else %}{{ status('Inactive') }}{% endif %}
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6"><div class="vital"><div class="k">Uploads</div><div class="v">{{ l.uploads }}</div></div></div>
+                    <div class="col-6"><div class="vital"><div class="k">Avg time</div><div class="v">{{ l.avg_hours or '-' }}<span class="u"> h</span></div></div></div>
+                </div>
+                <div class="small text-muted mb-3"><i class="bi bi-telephone"></i> {{ l.phone or '-' }} &middot; Last upload {{ l.last_upload.strftime('%d %b') if l.last_upload else 'never' }}</div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-ghost btn-sm flex-grow-1" data-bs-toggle="modal" data-bs-target="#resetPw" data-user="{{ l.user_id }}" data-label="{{ l.full_name }}"><i class="bi bi-key"></i> Password</button>
+                    <form method="POST" action="{{ url_for('admin.toggle_lab_assistant', lab_assistant_id=l.lab_assistant_id) }}" class="flex-grow-1">
+                        <button class="btn btn-sm w-100 {{ 'btn-danger-soft' if l.is_active else 'btn-soft' }}">{{ 'Deactivate' if l.is_active else 'Activate' }}</button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
+    {% else %}<div class="col-12"><div class="card-x">{{ empty('eyedropper', 'No lab assistants yet.') }}</div></div>{% endfor %}
+</div>
 
-    <div class="col-md-7">
-        <div class="card">
-            <div class="card-header">All Lab Assistants</div>
-            <div class="table-responsive">
-                <table class="table table-hover mb-0 align-middle">
-                    <thead><tr><th>Name</th><th>Phone</th><th>Status</th><th></th></tr></thead>
-                    <tbody>
-                        {% for l in lab_assistants %}
-                        <tr>
-                            <td>{{ l.full_name }}<div class="small text-muted">{{ l.username }}</div></td>
-                            <td>{{ l.phone or '—' }}</td>
-                            <td>{% if l.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}</td>
-                            <td>
-                                <form method="POST" action="{{ url_for('admin.toggle_lab_assistant', lab_assistant_id=l.lab_assistant_id) }}">
-                                    <button class="btn btn-sm btn-outline-secondary">{{ 'Deactivate' if l.is_active else 'Activate' }}</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="4" class="text-muted text-center py-3">No lab assistants yet.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+<div class="modal fade" id="addLab" tabindex="-1" aria-labelledby="addLabTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content border-0" method="POST" style="border-radius:20px">
+            <div class="modal-header border-0"><h5 class="modal-title fw-bold" id="addLabTitle">Add New Lab Assistant</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+            <div class="modal-body row g-3">
+                <div class="col-12"><label class="form-label">Full name</label><input class="form-control" name="full_name" required></div>
+                <div class="col-md-6"><label class="form-label">Username</label><input class="form-control" name="username" required></div>
+                <div class="col-md-6"><label class="form-label">Phone</label><input type="tel" class="form-control" name="phone"></div>
+                <div class="col-md-6"><label class="form-label">Email</label><input type="email" class="form-control" name="email" required></div>
+                <div class="col-md-6"><label class="form-label">Password</label><input type="password" class="form-control" name="password" minlength="6" required></div>
             </div>
-        </div>
+            <div class="modal-footer border-0"><button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Close</button><button class="btn btn-primary">Create Lab Assistant Account</button></div>
+        </form>
     </div>
 </div>
+{% include "admin/_reset_password_modal.html" %}
 {% endblock %}

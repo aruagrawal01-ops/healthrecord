@@ -1,22 +1,40 @@
 {% extends "base.html" %}
 {% block title %}Upload Report{% endblock %}
+{% block crumb %}Pending tests{% endblock %}
+{% block page_title %}Upload Result{% endblock %}
 {% block content %}
-<h3 class="mb-4"><i class="bi bi-upload"></i> Upload Result &mdash; {{ test.test_name }}</h3>
-<p class="text-muted">Patient: <strong>{{ test.patient_name }}</strong></p>
-<div class="card">
-    <div class="card-body">
-        <form method="POST" enctype="multipart/form-data">
-            <div class="mb-3">
-                <label class="form-label">Result Summary</label>
-                <textarea class="form-control" name="result_summary" rows="4" required placeholder="e.g. Total Cholesterol: 190 mg/dL, LDL: 110 mg/dL, HDL: 55 mg/dL — within normal range"></textarea>
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card-x">
+            <div class="card-head"><h2><span class="icon-chip"><i class="bi bi-upload"></i></span>{{ test.test_name }}</h2><span class="small text-muted">Patient: <b>{{ test.patient_name }}</b></span></div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label" for="result_summary">Result summary</label>
+                        <textarea class="form-control" id="result_summary" name="result_summary" rows="4" required placeholder="e.g. Total cholesterol 190 mg/dL, LDL 110 mg/dL, HDL 55 mg/dL - within normal range"></textarea>
+                    </div>
+                    <label class="form-label" for="report_file">Report file (optional)</label>
+                    <label for="report_file" class="d-block text-center p-4 mb-3" style="border:2px dashed var(--border);border-radius:16px;cursor:pointer;background:var(--surface-2)" id="dropZone">
+                        <i class="bi bi-cloud-arrow-up fs-1 text-muted"></i>
+                        <div class="fw-semibold" id="fileLabel">Click to choose a PDF, PNG or JPG</div>
+                        <div class="small text-muted">Max 5 MB &middot; stored inside the database as BYTEA</div>
+                    </label>
+                    <input type="file" class="d-none" id="report_file" name="report_file" accept=".pdf,.png,.jpg,.jpeg">
+                    <div class="small text-muted mb-4"><i class="bi bi-lightning-charge"></i> Saving fires the <span class="mono">trg_lab_report_insert</span> trigger, which marks this test Completed.</div>
+                    <button type="submit" class="btn btn-primary">Submit Report</button>
+                    <a href="{{ url_for('lab.pending_tests') }}" class="btn btn-ghost">Cancel</a>
+                </form>
             </div>
-            <div class="mb-3">
-                <label class="form-label">Attach Report File (PDF/PNG/JPG, optional, max 5MB)</label>
-                <input type="file" class="form-control" name="report_file" accept=".pdf,.png,.jpg,.jpeg">
-            </div>
-            <button type="submit" class="btn btn-primary">Submit Report</button>
-            <a href="{{ url_for('lab.pending_tests') }}" class="btn btn-outline-secondary">Cancel</a>
-        </form>
+        </div>
     </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById("report_file").addEventListener("change", (e) => {
+    const f = e.target.files[0];
+    document.getElementById("fileLabel").textContent = f ? f.name + " (" + Math.round(f.size / 1024) + " KB)" : "Click to choose a PDF, PNG or JPG";
+    if (f && f.size > 5 * 1024 * 1024) toast("That file is over 5 MB and will be rejected.", "warning");
+});
+</script>
 {% endblock %}

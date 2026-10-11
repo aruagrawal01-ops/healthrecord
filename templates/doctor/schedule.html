@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Weekly Schedule{% endblock %}
+{% block page_title %}Weekly Schedule{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <a href="{{ url_for('doctor.schedule', start=prev) }}" class="btn btn-ghost btn-icon" aria-label="Previous week"><i class="bi bi-chevron-left"></i></a>
+    <a href="{{ url_for('doctor.schedule') }}" class="btn btn-ghost">This week</a>
+    <a href="{{ url_for('doctor.schedule', start=next) }}" class="btn btn-ghost btn-icon" aria-label="Next week"><i class="bi bi-chevron-right"></i></a>
+    <div class="fw-bold fs-5 ms-2">{{ days[0].strftime('%d %b') }} - {{ days[-1].strftime('%d %b %Y') }}</div>
+    <span class="badge-soft st-scheduled ms-auto">{{ total }} booking{{ '' if total == 1 else 's' }} this week</span>
+</div>
+<div class="d-flex gap-3 mb-3 small text-muted flex-wrap">
+    <span><span class="badge-soft st-scheduled">Scheduled</span></span><span><span class="badge-soft st-completed">Completed</span></span><span><span class="badge-soft st-cancelled">Cancelled</span></span>
+    <span class="ms-auto">Lunch break 13:00-14:00 &middot; Sundays closed</span>
+</div>
+<div class="table-responsive">
+    <div class="week" style="min-width:860px">
+        <div class="wh"></div>
+        {% for d in days %}
+        <div class="wh {{ 'today' if d == today }}">{{ d.strftime('%a') }}<div class="small fw-semibold {{ '' if d == today else 'text-muted' }}">{{ d.strftime('%d %b') }} &middot; {{ counts[d] }}</div></div>
+        {% endfor %}
+        {% for s in slots %}
+            <div class="wt">{{ s }}</div>
+            {% for d in days %}
+            <div class="wc">
+                {% for a in grid.get((d, s), []) %}
+                <a class="ev {{ a.status|lower }}" href="{{ url_for('doctor.patient_detail', patient_id=a.patient_id) }}" data-bs-toggle="tooltip" title="{{ a.reason or 'Visit' }}">{{ a.patient_name }}</a>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

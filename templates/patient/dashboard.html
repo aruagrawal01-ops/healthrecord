@@ -1,68 +1,122 @@
 {% extends "base.html" %}
-{% block title %}Patient Dashboard{% endblock %}
+{% from "macros.html" import stat, status, empty, avatar %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
 {% block content %}
-<h3 class="mb-4">Welcome, {{ current_name }}</h3>
+<div class="hero mb-4">
+    <div class="row align-items-center g-3">
+        <div class="col-lg-7">
+            <div class="small fw-semibold opacity-75 mb-1">{{ today.strftime('%A, %d %B %Y') }}</div>
+            <h2><span data-greeting>Hello</span>, {{ current_name.split()[0] }}</h2>
+            <p>Welcome, {{ current_name }}. Here is a snapshot of your health and upcoming care.</p>
+        </div>
+        <div class="col-lg-5">
+            {% if next_appt %}
+            <div class="p-3 rounded-4" style="background:rgba(255,255,255,.14);backdrop-filter:blur(6px)">
+                <div class="small fw-bold text-uppercase opacity-75 mb-1">Next appointment</div>
+                <div class="fs-5 fw-bold">{{ next_appt.doctor_name }}</div>
+                <div class="small opacity-90">{{ next_appt.department }} &middot; {{ next_appt.appointment_date.strftime('%a %d %b') }} at {{ next_appt.appointment_time.strftime('%H:%M') }}</div>
+                {% set days = (next_appt.appointment_date - today).days %}
+                <div class="mt-2"><span class="badge rounded-pill bg-light text-dark">{{ 'Today' if days == 0 else ('Tomorrow' if days == 1 else 'In ' ~ days ~ ' days') }}</span></div>
+            </div>
+            {% else %}
+            <a href="{{ url_for('patient.appointments') }}" class="btn btn-light btn-lg"><i class="bi bi-calendar-plus me-1"></i> Book your next visit</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
 
-<div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card stat-card border-primary">
+<div class="row g-3 mb-4 stagger">
+    <div class="col-6 col-xl-3">{{ stat('calendar2-heart', 'g1', stats.upcoming, 'Upcoming Appointments') }}</div>
+    <div class="col-6 col-xl-3">{{ stat('clipboard2-check', 'g3', stats.visits, 'Visits Completed') }}</div>
+    <div class="col-6 col-xl-3">{{ stat('people', 'g4', stats.doctors, 'Doctors Seen') }}</div>
+    <div class="col-6 col-xl-3">{{ stat('hourglass-split', 'g2', stats.pending_tests, 'Pending Lab Tests') }}</div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="card-x h-100">
+            <div class="card-head"><h2><span class="icon-chip coral"><i class="bi bi-activity"></i></span>Health trends</h2><span class="small text-muted">Last {{ vitals.labels|length }} visits with vitals</span></div>
             <div class="card-body">
-                <div class="text-muted small">Upcoming Appointments</div>
-                <div class="fs-2 fw-bold">{{ upcoming|length }}</div>
+                {% if vitals.latest %}
+                {% set v = vitals.latest %}
+                <div class="row g-2 mb-3">
+                    <div class="col-6 col-md-3"><div class="vital"><div class="k">Blood pressure</div><div class="v">{{ v.bp_systolic }}<span class="u">/{{ v.bp_diastolic }} mmHg</span></div></div></div>
+                    <div class="col-6 col-md-3"><div class="vital"><div class="k">Heart rate</div><div class="v">{{ v.heart_rate }}<span class="u"> bpm</span></div></div></div>
+                    <div class="col-6 col-md-3"><div class="vital"><div class="k">Temperature</div><div class="v">{{ v.temperature_c }}<span class="u"> &deg;C</span></div></div></div>
+                    <div class="col-6 col-md-3"><div class="vital"><div class="k">Weight</div><div class="v">{{ v.weight_kg }}<span class="u"> kg</span></div></div></div>
+                </div>
+                <div style="height:250px"><canvas id="vitalsChart"></canvas></div>
+                {% else %}{{ empty('activity', 'Your vitals will appear here after your first visit.') }}{% endif %}
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card stat-card border-success">
+    <div class="col-lg-4">
+        <div class="card-x h-100">
+            <div class="card-head"><h2><span class="icon-chip"><i class="bi bi-calendar-event"></i></span>Upcoming</h2><a href="{{ url_for('patient.appointments') }}" class="small fw-semibold">Manage</a></div>
             <div class="card-body">
-                <div class="text-muted small">Recent Records</div>
-                <div class="fs-2 fw-bold">{{ recent_records|length }}</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card stat-card border-warning">
-            <div class="card-body">
-                <div class="text-muted small">Pending Lab Tests</div>
-                <div class="fs-2 fw-bold">{{ pending_tests }}</div>
+                {% for a in upcoming %}
+                <div class="d-flex align-items-center gap-3 {{ 'mb-3' if not loop.last }}">
+                    <div class="text-center rounded-3 px-2 py-1" style="background:var(--surface-2);min-width:54px">
+                        <div class="small text-muted fw-bold">{{ a.appointment_date.strftime('%b') }}</div><div class="fs-5 fw-bold lh-1">{{ a.appointment_date.day }}</div>
+                    </div>
+                    <div class="min-w-0"><div class="cell-main text-truncate">{{ a.doctor_name }}</div><div class="cell-sub">{{ a.department }} &middot; {{ a.appointment_time.strftime('%H:%M') }}</div></div>
+                </div>
+                {% else %}{{ empty('calendar-x', 'No upcoming appointments.') }}{% endfor %}
             </div>
         </div>
     </div>
 </div>
 
 <div class="row g-4">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-calendar-check"></i> Upcoming Appointments</span>
-                <a href="{{ url_for('patient.appointments') }}" class="small">Book new &rarr;</a>
-            </div>
-            <div class="list-group list-group-flush">
-                {% for a in upcoming %}
-                <div class="list-group-item">
-                    <div class="fw-semibold">{{ a.doctor_name }}</div>
-                    <div class="small text-muted">{{ a.appointment_date }} at {{ a.appointment_time }} &mdash; {{ a.reason }}</div>
+    <div class="col-lg-7">
+        <div class="card-x h-100">
+            <div class="card-head"><h2><span class="icon-chip violet"><i class="bi bi-journal-medical"></i></span>Recent visits</h2><a href="{{ url_for('patient.records') }}" class="small fw-semibold">All records</a></div>
+            <div class="card-body">
+                <div class="timeline">
+                    {% for r in recent_records %}
+                    <div class="tl-item {{ ['', 'violet', 'coral', 'amber'][loop.index0 % 4] }}">
+                        <div class="tl-time">{{ r.created_at.strftime('%d %b %Y') }} &middot; {{ r.department }}</div>
+                        <div class="fw-bold">{{ r.diagnosis }}</div>
+                        <div class="small text-muted">{{ r.doctor_name }}{% if r.prescription %} &middot; Rx: {{ r.prescription }}{% endif %}</div>
+                    </div>
+                    {% else %}{{ empty('journal', 'No records yet.') }}{% endfor %}
                 </div>
-                {% else %}
-                <div class="list-group-item text-muted">No upcoming appointments.</div>
-                {% endfor %}
             </div>
         </div>
     </div>
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header"><i class="bi bi-file-earmark-medical"></i> Recent Medical Records</div>
-            <div class="list-group list-group-flush">
-                {% for r in recent_records %}
-                <div class="list-group-item">
-                    <div class="fw-semibold">{{ r.diagnosis }}</div>
-                    <div class="small text-muted">{{ r.doctor_name }} &mdash; {{ r.created_at.strftime('%d %b %Y') }}</div>
+    <div class="col-lg-5">
+        <div class="card-x h-100">
+            <div class="card-head"><h2><span class="icon-chip amber"><i class="bi bi-clipboard2-pulse"></i></span>Latest lab results</h2><a href="{{ url_for('patient.lab_reports') }}" class="small fw-semibold">All reports</a></div>
+            <div class="card-body">
+                {% for t in reports %}
+                <div class="notice mb-2">
+                    <div class="icon-chip amber"><i class="bi bi-file-earmark-medical"></i></div>
+                    <div class="min-w-0"><div class="fw-semibold">{{ t.test_name }}</div><div class="small text-muted">{{ t.result_summary }}</div><div class="small text-muted">{{ t.uploaded_at.strftime('%d %b %Y') }}</div></div>
                 </div>
-                {% else %}
-                <div class="list-group-item text-muted">No records yet.</div>
-                {% endfor %}
+                {% else %}{{ empty('clipboard2', 'No lab results yet.') }}{% endfor %}
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+    const h = new Date().getHours();
+    document.querySelectorAll("[data-greeting]").forEach((el) => el.textContent = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening");
+    const v = {{ vitals|tojson }};
+    if (!v.labels.length) return;
+    mrChart("vitalsChart", {
+        type: "line",
+        data: { labels: v.labels, datasets: [
+            { label: "Systolic", data: v.systolic, borderColor: "#14b8a6", backgroundColor: "rgba(20,184,166,.12)", fill: true, tension: .35, yAxisID: "y" },
+            { label: "Diastolic", data: v.diastolic, borderColor: "#6366f1", tension: .35, yAxisID: "y" },
+            { label: "Heart rate", data: v.heart_rate, borderColor: "#fb7185", borderDash: [5, 5], tension: .35, yAxisID: "y" },
+            { label: "Weight (kg)", data: v.weight, borderColor: "#f59e0b", tension: .35, yAxisID: "y2" }] },
+        options: { interaction: { mode: "index", intersect: false }, plugins: { legend: { position: "bottom" } },
+            scales: { x: { grid: { display: false } }, y: { title: { display: true, text: "mmHg / bpm" } }, y2: { position: "right", grid: { display: false }, title: { display: true, text: "kg" } } } }
+    });
+})();
+</script>
 {% endblock %}

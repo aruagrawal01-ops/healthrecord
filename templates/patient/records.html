@@ -1,25 +1,80 @@
 {% extends "base.html" %}
-{% block title %}Medical Records{% endblock %}
+{% from "macros.html" import empty %}
+{% block title %}Health Records{% endblock %}
+{% block page_title %}Health Records{% endblock %}
 {% block content %}
-<h3 class="mb-4"><i class="bi bi-file-earmark-medical"></i> Medical Records</h3>
+{% if vitals.labels %}
+<div class="card-x mb-4">
+    <div class="card-head"><h2><span class="icon-chip coral"><i class="bi bi-graph-up"></i></span>Blood pressure and heart rate over time</h2><span class="small text-muted">{{ vitals.labels|length }} visits</span></div>
+    <div class="card-body"><div style="height:240px"><canvas id="trendChart"></canvas></div></div>
+</div>
+{% endif %}
 
-{% for r in records %}
-<div class="card mb-3">
+<div class="card-x">
+    <div class="card-head flex-wrap">
+        <h2><span class="icon-chip violet"><i class="bi bi-journal-medical"></i></span>All visits <span class="badge-soft st-info ms-1"><span id="recCount">{{ records|length }}</span> shown</span></h2>
+        <div class="input-icon" style="min-width:240px"><i class="bi bi-search"></i><input class="form-control form-control-sm" id="recSearch" placeholder="Search diagnosis, doctor, medicine"></div>
+    </div>
     <div class="card-body">
-        <div class="d-flex justify-content-between">
-            <h5 class="card-title">{{ r.diagnosis }}</h5>
-            <span class="text-muted small">{{ r.created_at.strftime('%d %b %Y') }}</span>
+        <div class="d-flex gap-2 flex-wrap mb-3" id="deptChips">
+            <span class="chip active" data-dept="">All departments</span>
+            {% for d in departments %}<span class="chip" data-dept="{{ d }}">{{ d }}</span>{% endfor %}
         </div>
-        <div class="small text-muted mb-2">{{ r.doctor_name }} &mdash; {{ r.specialization or '' }}</div>
-        {% if r.prescription %}
-        <p class="mb-1"><strong>Prescription:</strong> {{ r.prescription }}</p>
-        {% endif %}
-        {% if r.notes %}
-        <p class="mb-0 text-muted"><strong>Notes:</strong> {{ r.notes }}</p>
-        {% endif %}
+        <div class="row g-3" id="recGrid">
+            {% for r in records %}
+            <div class="col-lg-6 rec" data-dept="{{ r.department }}">
+                <div class="card-x lift h-100" style="box-shadow:none">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                            <div>
+                                <div class="small text-muted fw-bold">{{ r.created_at.strftime('%d %b %Y') }} &middot; {{ r.department }}</div>
+                                <div class="fw-bold fs-6">{{ r.diagnosis }}</div>
+                                <div class="small text-muted">{{ r.doctor_name }}, {{ r.specialization }}</div>
+                            </div>
+                            <a href="{{ url_for('patient.print_record', record_id=r.record_id) }}" class="btn btn-ghost btn-sm" target="_blank" data-bs-toggle="tooltip" title="Printable visit summary"><i class="bi bi-printer"></i></a>
+                        </div>
+                        {% if r.prescription %}<div class="small mb-1"><i class="bi bi-capsule text-success"></i> {{ r.prescription }}</div>{% endif %}
+                        {% if r.notes %}<div class="small text-muted mb-2"><i class="bi bi-sticky"></i> {{ r.notes }}</div>{% endif %}
+                        {% if r.bp_systolic %}
+                        <div class="d-flex gap-2 flex-wrap">
+                            <span class="badge-soft st-scheduled">BP {{ r.bp_systolic }}/{{ r.bp_diastolic }}</span>
+                            <span class="badge-soft st-pending">{{ r.heart_rate }} bpm</span>
+                            <span class="badge-soft st-info">{{ r.temperature_c }} &deg;C</span>
+                            <span class="badge-soft st-completed">{{ r.weight_kg }} kg</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% else %}<div class="col-12">{{ empty('journal', 'No medical records yet.') }}</div>{% endfor %}
+        </div>
     </div>
 </div>
-{% else %}
-<div class="text-center text-muted py-5">No medical records yet.</div>
-{% endfor %}
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+    const cards = [...document.querySelectorAll("#recGrid .rec")];
+    let dept = "", q = "";
+    const apply = () => {
+        let n = 0;
+        cards.forEach((c) => { const ok = (!dept || c.dataset.dept === dept) && (!q || c.textContent.toLowerCase().includes(q)); c.style.display = ok ? "" : "none"; if (ok) n++; });
+        document.getElementById("recCount").textContent = n;
+    };
+    document.getElementById("recSearch").addEventListener("input", (e) => { q = e.target.value.trim().toLowerCase(); apply(); });
+    document.querySelectorAll("#deptChips .chip").forEach((chip) => chip.addEventListener("click", () => {
+        document.querySelectorAll("#deptChips .chip").forEach((c) => c.classList.remove("active"));
+        chip.classList.add("active"); dept = chip.dataset.dept; apply();
+    }));
+    const v = {{ vitals|tojson }};
+    if (v.labels.length) mrChart("trendChart", {
+        type: "line",
+        data: { labels: v.labels, datasets: [
+            { label: "Systolic", data: v.systolic, borderColor: "#14b8a6", backgroundColor: "rgba(20,184,166,.12)", fill: true, tension: .35 },
+            { label: "Diastolic", data: v.diastolic, borderColor: "#6366f1", tension: .35 },
+            { label: "Heart rate", data: v.heart_rate, borderColor: "#fb7185", borderDash: [5, 5], tension: .35 }] },
+        options: { interaction: { mode: "index", intersect: false }, plugins: { legend: { position: "bottom" } }, scales: { x: { grid: { display: false } } } }
+    });
+})();
+</script>
 {% endblock %}

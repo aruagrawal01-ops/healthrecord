@@ -1,69 +1,134 @@
 {% extends "base.html" %}
+{% from "macros.html" import status, empty %}
 {% block title %}Appointments{% endblock %}
+{% block page_title %}Appointments{% endblock %}
 {% block content %}
-<h3 class="mb-4"><i class="bi bi-calendar-check"></i> Appointments</h3>
-
 <div class="row g-4">
-    <div class="col-md-5">
-        <div class="card">
-            <div class="card-header">Book New Appointment</div>
+    <div class="col-xl-5">
+        <div class="card-x">
+            <div class="card-head"><h2><span class="icon-chip"><i class="bi bi-calendar-plus"></i></span>Book an appointment</h2></div>
             <div class="card-body">
-                <form method="POST">
+                <form method="POST" data-slot-picker data-url="{{ url_for('patient.slots') }}">
                     <div class="mb-3">
-                        <label class="form-label">Doctor</label>
-                        <select class="form-select" name="doctor_id" required>
-                            <option value="" disabled selected>Select a doctor</option>
-                            {% for d in doctors %}
-                            <option value="{{ d.doctor_id }}">{{ d.full_name }} &mdash; {{ d.specialization or 'General' }} ({{ d.department or 'N/A' }})</option>
+                        <label class="form-label" for="doctor_id">Doctor</label>
+                        <select class="form-select" id="doctor_id" name="doctor_id" required>
+                            <option value="">Choose a doctor</option>
+                            {% for dept, docs in groups.items() %}
+                            <optgroup label="{{ dept }}">
+                                {% for d in docs %}<option value="{{ d.doctor_id }}" {{ 'selected' if preselect == d.doctor_id }}>{{ d.full_name }} &middot; {{ d.specialization }}</option>{% endfor %}
+                            </optgroup>
                             {% endfor %}
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Date</label>
-                        <input type="date" class="form-control" name="appointment_date" required>
+                        <label class="form-label" for="appointment_date">Date</label>
+                        <input type="date" class="form-control" id="appointment_date" name="appointment_date" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Time</label>
-                        <input type="time" class="form-control" name="appointment_time" required>
+                        <div class="d-flex justify-content-between align-items-end mb-2">
+                            <label class="form-label mb-0">Time slot</label>
+                            <span class="slot-hint small text-muted">Choose a doctor and a date to see free slots.</span>
+                        </div>
+                        <div class="slot-grid"></div>
+                        <input type="hidden" name="appointment_time">
+                        <div class="slot-legend mt-2"><span><span class="slot px-2 py-0">09:00</span> free</span><span><span class="slot px-2 py-0 text-decoration-line-through" style="opacity:.4">09:30</span> booked</span></div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Reason for visit</label>
-                        <textarea class="form-control" name="reason" rows="2"></textarea>
+                        <label class="form-label" for="reason">Reason for visit</label>
+                        <textarea class="form-control" id="reason" name="reason" rows="2" placeholder="e.g. Follow-up for blood pressure"></textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-circle"></i> Book Appointment</button>
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-check2-circle me-1"></i> Confirm booking</button>
+                    <p class="small text-muted mt-2 mb-0"><i class="bi bi-info-circle"></i> Clinic hours: Monday to Saturday, 09:00-12:30 and 14:00-16:30.</p>
                 </form>
             </div>
         </div>
     </div>
 
-    <div class="col-md-7">
-        <div class="card">
-            <div class="card-header">My Appointments</div>
-            <div class="table-responsive">
-                <table class="table table-hover mb-0 align-middle">
-                    <thead><tr><th>Doctor</th><th>Date</th><th>Time</th><th>Status</th><th></th></tr></thead>
+    <div class="col-xl-7">
+        <div class="card-x mb-4">
+            <div class="card-head"><h2><span class="icon-chip violet"><i class="bi bi-calendar-event"></i></span>Upcoming</h2><span class="badge-soft st-scheduled">{{ upcoming|length }} scheduled</span></div>
+            <div class="card-body">
+                {% for a in upcoming %}
+                <div class="notice mb-2 align-items-center">
+                    <div class="text-center rounded-3 px-2 py-1" style="background:var(--surface);min-width:58px;border:1px solid var(--border)">
+                        <div class="small text-muted fw-bold">{{ a.appointment_date.strftime('%b') }}</div><div class="fs-5 fw-bold lh-1">{{ a.appointment_date.day }}</div>
+                    </div>
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="fw-bold">{{ a.doctor_name }}</div>
+                        <div class="small text-muted">{{ a.department }} &middot; {{ a.appointment_date.strftime('%A') }} at {{ a.appointment_time.strftime('%H:%M') }}</div>
+                        {% if a.reason %}<div class="small text-muted text-truncate">{{ a.reason }}</div>{% endif %}
+                    </div>
+                    <div class="d-flex gap-1">
+                        <button type="button" class="btn btn-soft btn-sm" data-bs-toggle="modal" data-bs-target="#rescheduleModal"
+                                data-appt="{{ a.appointment_id }}" data-doctor="{{ a.doctor_id }}" data-doctor-name="{{ a.doctor_name }}"><i class="bi bi-arrow-repeat"></i> Reschedule</button>
+                        <form method="POST" action="{{ url_for('patient.cancel_appointment', appointment_id=a.appointment_id) }}" data-confirm="Cancel this appointment?">
+                            <button class="btn btn-danger-soft btn-sm">Cancel</button>
+                        </form>
+                    </div>
+                </div>
+                {% else %}{{ empty('calendar-x', 'Nothing booked yet. Pick a slot on the left.') }}{% endfor %}
+            </div>
+        </div>
+
+        <div class="card-x">
+            <div class="card-head flex-wrap">
+                <h2><span class="icon-chip sky"><i class="bi bi-clock-history"></i></span>History</h2>
+                <div class="d-flex gap-2 flex-wrap" id="historyChips">
+                    <span class="chip active" data-filter="">All</span><span class="chip" data-filter="Completed">Completed</span><span class="chip" data-filter="Cancelled">Cancelled</span>
+                </div>
+            </div>
+            <div class="table-wrap" style="max-height:420px">
+                <table class="table-x" id="historyTable">
+                    <thead><tr><th data-sort>Doctor</th><th data-sort>Date</th><th>Time</th><th data-sort>Status</th></tr></thead>
                     <tbody>
-                        {% for a in appointments %}
-                        <tr>
-                            <td>{{ a.doctor_name }}<div class="small text-muted">{{ a.specialization or '' }}</div></td>
-                            <td>{{ a.appointment_date }}</td>
-                            <td>{{ a.appointment_time }}</td>
-                            <td><span class="badge status-{{ a.status|lower }}">{{ a.status }}</span></td>
-                            <td>
-                                {% if a.status == 'Scheduled' %}
-                                <form method="POST" action="{{ url_for('patient.cancel_appointment', appointment_id=a.appointment_id) }}" onsubmit="return confirm('Cancel this appointment?');">
-                                    <button class="btn btn-sm btn-outline-danger">Cancel</button>
-                                </form>
-                                {% endif %}
-                            </td>
+                        {% for a in history %}
+                        <tr data-status="{{ a.status }}">
+                            <td><div class="cell-main">{{ a.doctor_name }}</div><div class="cell-sub">{{ a.department }}</div></td>
+                            <td data-value="{{ a.appointment_date }}">{{ a.appointment_date.strftime('%d %b %Y') }}</td>
+                            <td>{{ a.appointment_time.strftime('%H:%M') }}</td>
+                            <td>{{ status(a.status) }}</td>
                         </tr>
-                        {% else %}
-                        <tr><td colspan="5" class="text-muted text-center py-3">No appointments yet.</td></tr>
-                        {% endfor %}
+                        {% else %}<tr data-empty><td colspan="4">{{ empty('inbox', 'No past appointments.') }}</td></tr>{% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="rescheduleModal" tabindex="-1" aria-labelledby="rescheduleTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content border-0" method="POST" style="border-radius:20px" data-slot-picker data-url="{{ url_for('patient.slots') }}" id="rescheduleForm">
+            <div class="modal-header border-0"><h5 class="modal-title fw-bold" id="rescheduleTitle">Reschedule with <span data-doctor-label></span></h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+            <div class="modal-body">
+                <input type="hidden" name="doctor_id">
+                <label class="form-label" for="rs_date">New date</label>
+                <input type="date" class="form-control mb-3" id="rs_date" name="appointment_date" required>
+                <div class="d-flex justify-content-between mb-2"><label class="form-label mb-0">New time</label><span class="slot-hint small text-muted"></span></div>
+                <div class="slot-grid"></div>
+                <input type="hidden" name="appointment_time">
+                <p class="small text-muted mt-3 mb-0"><i class="bi bi-shield-check"></i> Your old slot is released only if the new one is confirmed (one database transaction).</p>
+            </div>
+            <div class="modal-footer border-0"><button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Close</button><button type="submit" class="btn btn-primary">Move appointment</button></div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById("rescheduleModal").addEventListener("show.bs.modal", (e) => {
+    const btn = e.relatedTarget, form = document.getElementById("rescheduleForm");
+    form.action = "{{ url_for('patient.reschedule_appointment', appointment_id=0) }}".replace("/0/", "/" + btn.dataset.appt + "/");
+    form.querySelector("[data-doctor-label]").textContent = btn.dataset.doctorName;
+    const doc = form.querySelector("[name=doctor_id]");
+    doc.value = btn.dataset.doctor;
+    form.querySelector("[type=date]").value = "";
+    doc.dispatchEvent(new Event("change"));
+});
+document.querySelectorAll("#historyChips .chip").forEach((chip) => chip.addEventListener("click", () => {
+    document.querySelectorAll("#historyChips .chip").forEach((c) => c.classList.remove("active"));
+    chip.classList.add("active");
+    document.querySelectorAll("#historyTable tbody tr[data-status]").forEach((tr) => tr.style.display = !chip.dataset.filter || tr.dataset.status === chip.dataset.filter ? "" : "none");
+}));
+</script>
 {% endblock %}

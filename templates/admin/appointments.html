@@ -1,24 +1,60 @@
 {% extends "base.html" %}
-{% block title %}All Appointments{% endblock %}
+{% from "macros.html" import status, empty, avatar %}
+{% block title %}Appointments{% endblock %}
+{% block crumb %}Administration{% endblock %}
+{% block page_title %}All Appointments{% endblock %}
 {% block content %}
-<h3 class="mb-4"><i class="bi bi-calendar-check"></i> All Appointments</h3>
-<div class="card">
-    <div class="table-responsive">
-        <table class="table table-hover mb-0 align-middle">
-            <thead><tr><th>Patient</th><th>Doctor</th><th>Date</th><th>Time</th><th>Reason</th><th>Status</th></tr></thead>
+{% set qs = request.query_string.decode() %}
+<div class="row g-3 mb-4 stagger">
+    {% for key, label, icon, grad, st in [('total', 'Matching', 'calendar2-week', 'g1', ''), ('scheduled', 'Scheduled', 'clock', 'g3', 'Scheduled'), ('completed', 'Completed', 'check2-circle', 'g4', 'Completed'), ('cancelled', 'Cancelled', 'x-circle', 'g2', 'Cancelled')] %}
+    <div class="col-6 col-xl-3">
+        <a href="{{ url_for('admin.appointments', **dict(filters, status=st)) }}" class="card-x stat lift text-body {{ 'border-primary' if filters.get('status', '') == st }}">
+            <div class="bubble {{ grad }}"><i class="bi bi-{{ icon }}"></i></div>
+            <div><div class="value" data-count="{{ counts[key] }}">{{ counts[key] }}</div><div class="label">{{ label }}</div></div>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="card-x mb-4">
+    <div class="card-body">
+        <form class="filter-bar" method="GET">
+            <input type="hidden" name="status" value="{{ filters.get('status', '') }}">
+            <div><label class="form-label">Department</label>
+                <select name="department" class="form-select"><option value="">All</option>{% for d in departments %}<option value="{{ d.department_id }}" {{ 'selected' if filters.get('department') == d.department_id|string }}>{{ d.name }}</option>{% endfor %}</select></div>
+            <div><label class="form-label">Doctor</label>
+                <select name="doctor" class="form-select"><option value="">All</option>{% for d in doctors %}<option value="{{ d.doctor_id }}" {{ 'selected' if filters.get('doctor') == d.doctor_id|string }}>{{ d.full_name }}</option>{% endfor %}</select></div>
+            <div><label class="form-label">From</label><input type="date" name="from" class="form-control" value="{{ filters.get('from', '') }}"></div>
+            <div><label class="form-label">To</label><input type="date" name="to" class="form-control" value="{{ filters.get('to', '') }}"></div>
+            <div class="flex-grow-1"><label class="form-label">Patient</label><div class="input-icon"><i class="bi bi-search"></i><input name="q" class="form-control" value="{{ filters.get('q', '') }}" placeholder="Name"></div></div>
+            <button class="btn btn-primary">Filter</button>
+            <a href="{{ url_for('admin.appointments') }}" class="btn btn-ghost">Reset</a>
+            <a href="{{ url_for('admin.export', name='appointments') }}{{ '?' ~ qs if qs }}" class="btn btn-soft"><i class="bi bi-download"></i> CSV</a>
+        </form>
+    </div>
+</div>
+
+<div class="card-x">
+    <div class="card-head"><h2><span class="icon-chip"><i class="bi bi-list-ul"></i></span>Results</h2><span class="small text-muted">Showing {{ appointments|length }} of {{ counts.total }}{{ ' (newest 400)' if counts.total > 400 }}</span></div>
+    <div class="table-wrap">
+        <table class="table-x">
+            <thead><tr><th data-sort>Patient</th><th data-sort>Doctor</th><th data-sort>Department</th><th data-sort>Date</th><th>Time</th><th>Reason</th><th data-sort>Status</th><th></th></tr></thead>
             <tbody>
                 {% for a in appointments %}
                 <tr>
-                    <td>{{ a.patient_name }}</td>
+                    <td><div class="d-flex align-items-center gap-2">{{ avatar(a.patient_name, 'sm') }}<span class="cell-main">{{ a.patient_name }}</span></div></td>
                     <td>{{ a.doctor_name }}</td>
-                    <td>{{ a.appointment_date }}</td>
-                    <td>{{ a.appointment_time }}</td>
-                    <td>{{ a.reason }}</td>
-                    <td><span class="badge status-{{ a.status|lower }}">{{ a.status }}</span></td>
+                    <td>{{ a.department or '-' }}</td>
+                    <td data-value="{{ a.appointment_date }}" class="text-nowrap">{{ a.appointment_date.strftime('%d %b %Y') }}</td>
+                    <td class="mono">{{ a.appointment_time.strftime('%H:%M') }}</td>
+                    <td class="small">{{ a.reason }}</td>
+                    <td>{{ status(a.status) }}</td>
+                    <td>{% if a.status == 'Scheduled' %}
+                        <form method="POST" action="{{ url_for('admin.cancel_appointment', appointment_id=a.appointment_id) }}" data-confirm="Cancel this appointment for {{ a.patient_name }}?">
+                            <input type="hidden" name="back" value="{{ request.full_path }}"><button class="btn btn-danger-soft btn-sm">Cancel</button>
+                        </form>{% endif %}</td>
                 </tr>
-                {% else %}
-                <tr><td colspan="6" class="text-muted text-center py-3">No appointments yet.</td></tr>
-                {% endfor %}
+                {% else %}<tr data-empty><td colspan="8">{{ empty('calendar-x', 'No appointments match these filters.') }}</td></tr>{% endfor %}
             </tbody>
         </table>
     </div>

@@ -1,84 +1,98 @@
 {% extends "base.html" %}
+{% from "macros.html" import status, empty, avatar %}
 {% block title %}Doctors{% endblock %}
+{% block crumb %}Administration{% endblock %}
+{% block page_title %}Manage Doctors{% endblock %}
 {% block content %}
-<h3 class="mb-4"><i class="bi bi-clipboard2-pulse"></i> Manage Doctors</h3>
+{% set active = doctors|selectattr('is_active')|list %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-4">
+    <span class="badge-soft st-active">{{ active|length }} active</span>
+    <span class="badge-soft st-inactive">{{ doctors|length - active|length }} inactive</span>
+    <div class="input-icon ms-auto" style="min-width:260px"><i class="bi bi-search"></i><input class="form-control" data-table-filter="#docTable" placeholder="Search name, department, specialization"></div>
+    <a href="{{ url_for('admin.export', name='doctors') }}" class="btn btn-ghost"><i class="bi bi-download"></i> CSV</a>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDoctor"><i class="bi bi-plus-lg me-1"></i> Add doctor</button>
+</div>
 
-<div class="row g-4">
-    <div class="col-md-5">
-        <div class="card">
-            <div class="card-header">Add New Doctor</div>
-            <div class="card-body">
-                <form method="POST">
-                    <div class="mb-2">
-                        <label class="form-label">Full Name</label>
-                        <input type="text" class="form-control" name="full_name" required>
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Username</label>
-                        <input type="text" class="form-control" name="username" required>
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Email</label>
-                        <input type="email" class="form-control" name="email" required>
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Password</label>
-                        <input type="password" class="form-control" name="password" minlength="6" required>
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Specialization</label>
-                        <input type="text" class="form-control" name="specialization">
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Qualification</label>
-                        <input type="text" class="form-control" name="qualification">
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Department</label>
-                        <select class="form-select" name="department_id">
-                            <option value="">— None —</option>
-                            {% for d in departments %}
-                            <option value="{{ d.department_id }}">{{ d.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Phone</label>
-                        <input type="tel" class="form-control" name="phone">
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">Create Doctor Account</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-7">
-        <div class="card">
-            <div class="card-header">All Doctors</div>
-            <div class="table-responsive">
-                <table class="table table-hover mb-0 align-middle">
-                    <thead><tr><th>Name</th><th>Specialization</th><th>Department</th><th>Today</th><th>Status</th><th></th></tr></thead>
-                    <tbody>
-                        {% for d in doctors %}
-                        <tr>
-                            <td>{{ d.full_name }}<div class="small text-muted">{{ d.username }}</div></td>
-                            <td>{{ d.specialization or '—' }}</td>
-                            <td>{{ d.department or '—' }}</td>
-                            <td>{{ d.todays_load }}</td>
-                            <td>{% if d.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}</td>
-                            <td>
-                                <form method="POST" action="{{ url_for('admin.toggle_doctor', doctor_id=d.doctor_id) }}">
-                                    <button class="btn btn-sm btn-outline-secondary">{{ 'Deactivate' if d.is_active else 'Activate' }}</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="6" class="text-muted text-center py-3">No doctors yet.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+<div class="card-x">
+    <div class="card-head"><h2><span class="icon-chip"><i class="bi bi-heart-pulse"></i></span>All Doctors</h2></div>
+    <div class="table-wrap">
+        <table class="table-x" id="docTable">
+            <thead><tr><th data-sort>Doctor</th><th data-sort>Department</th><th>Specialization</th><th data-sort="num">Today</th><th data-sort="num">Completed</th><th data-sort="num">Completion</th><th data-sort>Status</th><th></th></tr></thead>
+            <tbody>
+                {% for d in doctors %}
+                <tr>
+                    <td><div class="d-flex align-items-center gap-2">{{ avatar(d.full_name, 'sm') }}<div><div class="cell-main">{{ d.full_name }}</div><div class="cell-sub">@{{ d.username }} &middot; {{ d.email }}</div></div></div></td>
+                    <td>{{ d.department or '-' }}</td>
+                    <td class="small" style="max-width:190px">{{ d.specialization or '-' }}<div class="cell-sub">{{ d.qualification or '' }}</div></td>
+                    <td><span class="badge-soft {{ 'st-scheduled' if d.todays_load else 'st-cancelled' }}">{{ d.todays_load }}</span></td>
+                    <td>{{ d.completed or 0 }}</td>
+                    <td data-value="{{ d.completion_rate or 0 }}">{{ d.completion_rate or 0 }}%</td>
+                    <td>{% if d.is_active %}{{ status('Active') }}{% else %}{{ status('Inactive') }}{% endif %}</td>
+                    <td class="text-end text-nowrap">
+                        <button class="btn btn-ghost btn-sm" data-bs-toggle="modal" data-bs-target="#editDoctor" aria-label="Edit"
+                                data-id="{{ d.doctor_id }}" data-name="{{ d.full_name }}" data-spec="{{ d.specialization or '' }}" data-qual="{{ d.qualification or '' }}"
+                                data-dept="{{ d.department_id or '' }}" data-phone="{{ d.phone or '' }}" data-email="{{ d.email }}"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-ghost btn-sm" data-bs-toggle="modal" data-bs-target="#resetPw" data-user="{{ d.user_id }}" data-label="{{ d.full_name }}" aria-label="Reset password"><i class="bi bi-key"></i></button>
+                        <form method="POST" action="{{ url_for('admin.toggle_doctor', doctor_id=d.doctor_id) }}" class="d-inline">
+                            <button class="btn btn-sm {{ 'btn-danger-soft' if d.is_active else 'btn-soft' }}" data-bs-toggle="tooltip" title="{{ 'Deactivate' if d.is_active else 'Activate' }} account" aria-label="{{ 'Deactivate' if d.is_active else 'Activate' }} account"><i class="bi bi-{{ 'person-x' if d.is_active else 'person-check' }}"></i></button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}<tr data-empty><td colspan="8">{{ empty('heart-pulse', 'No doctors yet.') }}</td></tr>{% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
+
+{% macro dept_select(name='department_id', id='') %}
+<select class="form-select" name="{{ name }}" {% if id %}id="{{ id }}"{% endif %}><option value="">None</option>{% for d in departments %}<option value="{{ d.department_id }}">{{ d.name }}</option>{% endfor %}</select>
+{% endmacro %}
+
+<div class="modal fade" id="addDoctor" tabindex="-1" aria-labelledby="addDoctorTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <form class="modal-content border-0" method="POST" style="border-radius:20px">
+            <div class="modal-header border-0"><h5 class="modal-title fw-bold" id="addDoctorTitle">Add New Doctor</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+            <div class="modal-body row g-3">
+                <div class="col-md-6"><label class="form-label">Full name</label><input class="form-control" name="full_name" placeholder="Dr. ..." required></div>
+                <div class="col-md-6"><label class="form-label">Username</label><input class="form-control" name="username" required></div>
+                <div class="col-md-6"><label class="form-label">Email</label><input type="email" class="form-control" name="email" required></div>
+                <div class="col-md-6"><label class="form-label">Password</label><input type="password" class="form-control" name="password" minlength="6" required></div>
+                <div class="col-md-6"><label class="form-label">Specialization</label><input class="form-control" name="specialization"></div>
+                <div class="col-md-6"><label class="form-label">Qualification</label><input class="form-control" name="qualification"></div>
+                <div class="col-md-6"><label class="form-label">Department</label>{{ dept_select() }}</div>
+                <div class="col-md-6"><label class="form-label">Phone</label><input type="tel" class="form-control" name="phone"></div>
+            </div>
+            <div class="modal-footer border-0"><button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Close</button><button class="btn btn-primary">Create Doctor Account</button></div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="editDoctor" tabindex="-1" aria-labelledby="editDoctorTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <form class="modal-content border-0" method="POST" style="border-radius:20px" id="editForm">
+            <div class="modal-header border-0"><h5 class="modal-title fw-bold" id="editDoctorTitle">Edit doctor</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+            <div class="modal-body row g-3">
+                <div class="col-md-6"><label class="form-label">Full name</label><input class="form-control" name="full_name" required></div>
+                <div class="col-md-6"><label class="form-label">Email</label><input type="email" class="form-control" name="email" required></div>
+                <div class="col-md-6"><label class="form-label">Specialization</label><input class="form-control" name="specialization"></div>
+                <div class="col-md-6"><label class="form-label">Qualification</label><input class="form-control" name="qualification"></div>
+                <div class="col-md-6"><label class="form-label">Department</label>{{ dept_select() }}</div>
+                <div class="col-md-6"><label class="form-label">Phone</label><input type="tel" class="form-control" name="phone"></div>
+            </div>
+            <div class="modal-footer border-0"><button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Close</button><button class="btn btn-primary">Save changes</button></div>
+        </form>
+    </div>
+</div>
+
+{% include "admin/_reset_password_modal.html" %}
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById("editDoctor").addEventListener("show.bs.modal", (e) => {
+    const b = e.relatedTarget.dataset, f = document.getElementById("editForm");
+    f.action = "{{ url_for('admin.edit_doctor', doctor_id=0) }}".replace("/0/", "/" + b.id + "/");
+    f.full_name.value = b.name; f.email.value = b.email; f.specialization.value = b.spec; f.qualification.value = b.qual;
+    f.department_id.value = b.dept; f.phone.value = b.phone;
+});
+</script>
 {% endblock %}

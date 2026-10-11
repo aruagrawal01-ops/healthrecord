@@ -1,52 +1,107 @@
 {% extends "base.html" %}
-{% block title %}Welcome{% endblock %}
-{% block content %}
-<div class="hero text-center py-5 mb-4">
-    <i class="bi bi-heart-pulse-fill display-3 text-danger"></i>
-    <h1 class="fw-bold mt-3">MediRecord</h1>
-    <p class="lead text-muted">Patient Health Record Management System</p>
-    <div class="mt-4">
-        <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg me-2"><i class="bi bi-box-arrow-in-right"></i> Login</a>
-        <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary btn-lg">Register as Patient</a>
-    </div>
-</div>
+{% block title %}Patient Health Records{% endblock %}
+{% block public %}
+<div class="container">
+    <nav class="public-nav">
+        <a class="d-flex align-items-center gap-2 fw-bold fs-5 text-body" href="{{ url_for('auth.index') }}"><span class="brand-mark"><i class="bi bi-heart-pulse-fill"></i></span>MediRecord</a>
+        <div class="d-flex gap-2">
+            <button class="btn btn-ghost btn-icon" data-theme-toggle aria-label="Toggle dark mode"><i data-theme-icon class="bi bi-moon-stars"></i></button>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-ghost">Log in</a>
+            <a href="{{ url_for('auth.register') }}" class="btn btn-primary">Get started</a>
+        </div>
+    </nav>
 
-<div class="row g-4">
-    <div class="col-md-3">
-        <div class="card h-100 text-center feature-card">
-            <div class="card-body">
-                <i class="bi bi-person-fill display-5 text-primary"></i>
-                <h5 class="card-title mt-3">Patient</h5>
-                <p class="card-text text-muted small">Book appointments, view prescriptions and lab reports.</p>
+    <section class="row align-items-center g-5 py-5 landing-hero">
+        <div class="col-lg-6 fade-up">
+            <span class="badge-soft st-info mb-3">Hospital records, unified</span>
+            <h1 class="mb-3">Every patient's story, <span class="grad-text">in one place.</span></h1>
+            <p class="fs-5 text-muted mb-4">MediRecord connects patients, doctors, lab staff and administrators on one secure, normalized database: live appointment slots, health trends, lab reports and real-time analytics.</p>
+            <div class="d-flex flex-wrap gap-2 mb-5">
+                <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg px-4"><i class="bi bi-box-arrow-in-right me-1"></i> Log in</a>
+                <a href="{{ url_for('auth.register') }}" class="btn btn-ghost btn-lg px-4">Register as a patient</a>
+            </div>
+            <div class="row g-3 text-center">
+                {% for value, label in [(stats.patients, 'Patients'), (stats.doctors, 'Doctors'), (stats.departments, 'Departments'), (stats.visits, 'Visits completed')] %}
+                <div class="col-6 col-md-3"><div class="fs-3 fw-bold" data-count="{{ value }}">{{ value }}</div><div class="small text-muted fw-semibold">{{ label }}</div></div>
+                {% endfor %}
             </div>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card h-100 text-center feature-card">
-            <div class="card-body">
-                <i class="bi bi-clipboard2-pulse-fill display-5 text-success"></i>
-                <h5 class="card-title mt-3">Doctor</h5>
-                <p class="card-text text-muted small">Manage appointments, diagnoses, prescriptions and lab requests.</p>
+        <div class="col-lg-6">
+            <div class="mock float">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <span class="avatar c1">AM</span>
+                    <div><div class="fw-bold">Dr. Anita Mehta</div><div class="small text-muted">Cardiology &middot; today</div></div>
+                    <span class="ms-auto badge-soft st-completed">On duty</span>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-4"><div class="vital"><div class="k">BP</div><div class="v">128<span class="u">/84</span></div></div></div>
+                    <div class="col-4"><div class="vital"><div class="k">Pulse</div><div class="v">76<span class="u"> bpm</span></div></div></div>
+                    <div class="col-4"><div class="vital"><div class="k">Temp</div><div class="v">36.8<span class="u"> &deg;C</span></div></div></div>
+                </div>
+                <div style="height:170px"><canvas id="heroChart"></canvas></div>
+                <div class="d-flex gap-2 mt-3 flex-wrap">
+                    {% for t in ['09:00', '09:30', '10:00', '10:30', '11:00'] %}<span class="slot px-3 {{ 'selected' if loop.index == 3 }}">{{ t }}</span>{% endfor %}
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card h-100 text-center feature-card">
-            <div class="card-body">
-                <i class="bi bi-flask-fill display-5 text-warning"></i>
-                <h5 class="card-title mt-3">Lab Assistant</h5>
-                <p class="card-text text-muted small">Process pending test requests and upload results.</p>
+    </section>
+
+    <section class="py-5">
+        <div class="text-center mb-4"><h2 class="fw-bold">Four roles, one system</h2><p class="text-muted">Each login sees exactly what it needs.</p></div>
+        <div class="row g-4 stagger">
+            {% for icon, grad, title, text in [
+                ('person-heart', 'g1', 'Patients', 'Book live slots, reschedule in a click, track BP and weight trends, download lab reports.'),
+                ('heart-pulse', 'g3', 'Doctors', 'Weekly calendar, full patient history with vitals charts, diagnoses and lab requests.'),
+                ('eyedropper', 'g2', 'Lab staff', 'An ageing test queue, file uploads stored in the database, turnaround analytics.'),
+                ('shield-lock', 'g4', 'Administrators', 'Analytics, reports with CSV export, account control, announcements and a SQL explorer.')] %}
+            <div class="col-md-6 col-lg-3">
+                <div class="card-x lift role-card">
+                    <div class="bubble" style="background:var({{ {'g1': '--grad', 'g2': '--grad-warm', 'g3': '--grad-violet', 'g4': '--grad-sky'}[grad] }})"><i class="bi bi-{{ icon }}"></i></div>
+                    <h5 class="fw-bold">{{ title }}</h5><p class="text-muted mb-0">{{ text }}</p>
+                </div>
             </div>
+            {% endfor %}
         </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card h-100 text-center feature-card">
-            <div class="card-body">
-                <i class="bi bi-shield-lock-fill display-5 text-secondary"></i>
-                <h5 class="card-title mt-3">Admin</h5>
-                <p class="card-text text-muted small">Manage doctors, lab staff, departments and hospital-wide records.</p>
+    </section>
+
+    <section class="py-5">
+        <div class="row g-4">
+            {% for icon, chip, title, text in [
+                ('calendar2-check', '', 'Clash-free booking', 'A stored procedure checks clinic hours and blocks double-booking; a partial unique index backs it up.'),
+                ('graph-up-arrow', 'violet', 'Health trends', 'Vitals recorded at every visit become charts on the patient and doctor dashboards.'),
+                ('shield-check', 'coral', 'Full audit trail', 'A trigger logs every change to a medical record, viewable by the administrator.'),
+                ('database', 'amber', 'Live SQL explorer', 'Browse every table and run read-only SQL queries straight from the admin panel.'),
+                ('arrow-repeat', 'sky', 'Atomic rescheduling', 'Moving a booking cancels and rebooks in one transaction: all or nothing.'),
+                ('moon-stars', '', 'Light and dark', 'A calm, colourful interface that works on phones and desktops, day or night.')] %}
+            <div class="col-md-6 col-lg-4">
+                <div class="d-flex gap-3">
+                    <div class="icon-chip {{ chip }}" style="width:46px;height:46px;font-size:1.2rem"><i class="bi bi-{{ icon }}"></i></div>
+                    <div><h6 class="fw-bold mb-1">{{ title }}</h6><p class="text-muted small mb-0">{{ text }}</p></div>
+                </div>
             </div>
+            {% endfor %}
         </div>
-    </div>
+    </section>
+
+    <section class="py-5">
+        <div class="hero text-center py-5">
+            <h2>Ready to see it live?</h2>
+            <p class="mb-4">Try any of the four demo accounts from the login page.</p>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-light btn-lg px-4">Open the demo</a>
+        </div>
+    </section>
+    <footer class="text-center text-muted small py-4">MediRecord &middot; DBMS Lab Project &middot; Arush Agrawal &amp; Tanmay Khare</footer>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+mrChart("heroChart", {
+    type: "line",
+    data: { labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+        datasets: [
+            { label: "Systolic", data: [138, 134, 131, 129, 127, 124], borderColor: "#14b8a6", backgroundColor: "rgba(20,184,166,.15)", fill: true, tension: .4 },
+            { label: "Diastolic", data: [90, 88, 86, 85, 84, 82], borderColor: "#6366f1", tension: .4 }] },
+    options: { plugins: { legend: { position: "bottom" } }, scales: { y: { grid: { color: "rgba(100,116,139,.12)" } }, x: { grid: { display: false } } } }
+});
+</script>
 {% endblock %}

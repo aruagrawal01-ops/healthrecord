@@ -1,25 +1,46 @@
 {% extends "base.html" %}
+{% from "macros.html" import empty, avatar %}
 {% block title %}Pending Tests{% endblock %}
+{% block page_title %}Pending Lab Tests{% endblock %}
 {% block content %}
-<h3 class="mb-4"><i class="bi bi-hourglass-split"></i> Pending Lab Tests</h3>
-<div class="card">
-    <div class="table-responsive">
-        <table class="table table-hover mb-0 align-middle">
-            <thead><tr><th>Patient</th><th>Test</th><th>Requested By</th><th>Requested On</th><th></th></tr></thead>
+<div class="card-x">
+    <div class="card-head flex-wrap">
+        <h2><span class="icon-chip amber"><i class="bi bi-hourglass-split"></i></span>Queue <span class="badge-soft st-pending ms-1"><span id="qCount">{{ tests|length }}</span> waiting</span></h2>
+        <div class="d-flex gap-2 flex-wrap">
+            <select class="form-select form-select-sm" id="typeFilter" style="min-width:200px"><option value="">All test types</option>{% for t in test_types %}<option>{{ t }}</option>{% endfor %}</select>
+            <div class="input-icon" style="min-width:220px"><i class="bi bi-search"></i><input class="form-control form-control-sm" id="qSearch" placeholder="Search patient or doctor"></div>
+        </div>
+    </div>
+    <div class="table-wrap">
+        <table class="table-x" id="queueTable">
+            <thead><tr><th data-sort="num">Waiting</th><th data-sort>Patient</th><th data-sort>Test</th><th>Requested By</th><th data-sort>Requested On</th><th></th></tr></thead>
             <tbody>
                 {% for t in tests %}
-                <tr>
-                    <td>{{ t.patient_name }}</td>
-                    <td>{{ t.test_name }}</td>
+                <tr data-type="{{ t.test_name }}">
+                    <td data-value="{{ t.days }}"><span class="badge-soft {{ 'st-inactive' if t.days > 3 else ('st-pending' if t.days > 1 else 'st-completed') }}">{{ t.days }} day{{ '' if t.days == 1 else 's' }}</span></td>
+                    <td><div class="d-flex align-items-center gap-2">{{ avatar(t.patient_name, 'sm') }}<div><div class="cell-main">{{ t.patient_name }}</div><div class="cell-sub">{{ t.age }} yrs</div></div></div></td>
+                    <td class="cell-main">{{ t.test_name }}</td>
                     <td>{{ t.requested_by }}</td>
-                    <td>{{ t.requested_at.strftime('%d %b %Y %H:%M') }}</td>
-                    <td><a href="{{ url_for('lab.upload_report', lab_test_id=t.lab_test_id) }}" class="btn btn-sm btn-primary"><i class="bi bi-upload"></i> Upload Result</a></td>
+                    <td data-value="{{ t.requested_at }}">{{ t.requested_at.strftime('%d %b %Y %H:%M') }}</td>
+                    <td class="text-end"><a href="{{ url_for('lab.upload_report', lab_test_id=t.lab_test_id) }}" class="btn btn-primary btn-sm"><i class="bi bi-upload"></i> Upload Result</a></td>
                 </tr>
-                {% else %}
-                <tr><td colspan="5" class="text-muted text-center py-3">No pending tests. All caught up!</td></tr>
-                {% endfor %}
+                {% else %}<tr data-empty><td colspan="6">{{ empty('check2-all', 'No pending tests. All caught up!') }}</td></tr>{% endfor %}
             </tbody>
         </table>
     </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+    const rows = [...document.querySelectorAll("#queueTable tbody tr[data-type]")];
+    const type = document.getElementById("typeFilter"), search = document.getElementById("qSearch");
+    const apply = () => {
+        const q = search.value.trim().toLowerCase(); let n = 0;
+        rows.forEach((r) => { const ok = (!type.value || r.dataset.type === type.value) && (!q || r.textContent.toLowerCase().includes(q)); r.style.display = ok ? "" : "none"; if (ok) n++; });
+        document.getElementById("qCount").textContent = n;
+    };
+    type.addEventListener("change", apply); search.addEventListener("input", apply);
+})();
+</script>
 {% endblock %}
